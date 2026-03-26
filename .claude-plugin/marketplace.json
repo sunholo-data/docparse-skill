@@ -1,0 +1,11 @@
+{
+  "name": "docparse-marketplace",
+  "owner": "Holosun ApS",
+  "plugins": [
+    {
+      "name": "docparse",
+      "source": "./skills/docparse",
+      "description": "Parse documents with the DocParse API — 13 formats, structured blocks, one endpoint. Use for DOCX, PDF, PPTX, XLSX, CSV, images, audio, video parsing and extraction."
+    }
+  ]
+}

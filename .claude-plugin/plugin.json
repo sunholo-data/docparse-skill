@@ -1,0 +1,6 @@
+{
+  "name": "docparse",
+  "description": "DocParse — Universal document parsing API. Parse 13 formats into structured blocks via one endpoint.",
+  "version": "0.9.0",
+  "author": "Holosun ApS"
+}
