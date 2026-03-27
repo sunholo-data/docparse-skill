@@ -8,7 +8,7 @@ https://ailang-dev-docparse-api-ejjw6zt3bq-ew.a.run.app
 
 ## Authentication
 
-All data endpoints require an API key passed via `x-api-key` header.
+Parse endpoints require an API key passed as `apiKey` in the JSON body.
 
 Key format: `dp_` followed by 32 hex characters (e.g., `dp_a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6`).
 
@@ -44,7 +44,8 @@ Parse a document into structured blocks.
 ```json
 {
   "filepath": "data/test_files/sample.docx",
-  "output_format": "blocks"
+  "outputFormat": "blocks",
+  "apiKey": "dp_your_key_here"
 }
 ```
 

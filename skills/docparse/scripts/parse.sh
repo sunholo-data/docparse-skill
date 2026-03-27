@@ -24,8 +24,7 @@ fi
 
 result=$(curl -s --max-time 60 -X POST "$DOCPARSE_URL/api/v1/parse" \
   -H "Content-Type: application/json" \
-  -H "x-api-key: $DOCPARSE_API_KEY" \
-  -d "{\"filepath\":\"$filepath\",\"output_format\":\"$output_format\"}")
+  -d "{\"filepath\":\"$filepath\",\"outputFormat\":\"$output_format\",\"apiKey\":\"$DOCPARSE_API_KEY\"}")
 
 # Try to pretty-print the inner result
 echo "$result" | python3 -c "
