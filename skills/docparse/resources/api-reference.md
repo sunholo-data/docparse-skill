@@ -61,7 +61,8 @@ Parse a document into structured blocks.
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | filepath | string | yes | File path on server or sample_id |
-| output_format | string | no | `blocks` (default), `markdown`, `html`, `a2ui` |
+| outputFormat | string | no | `blocks` (default), `markdown`, `html`, `a2ui` |
+| apiKey | string | yes | API key with `dp_` prefix |
 
 **Response (result field, decoded):**
 
@@ -89,7 +90,7 @@ Estimate cost and latency before parsing.
 ```json
 {
   "filepath": "report.docx",
-  "output_format": "blocks"
+  "outputFormat": "blocks"
 }
 ```
 

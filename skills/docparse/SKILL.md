@@ -41,7 +41,7 @@ https://ailang-dev-docparse-api-ejjw6zt3bq-ew.a.run.app
 
 ## Authentication
 
-API key with `dp_` prefix. Pass via `x-api-key` header or set `DOCPARSE_API_KEY` env var.
+API key with `dp_` prefix. Pass as `apiKey` in the JSON body, or set `DOCPARSE_API_KEY` env var for skill scripts.
 
 **Get a key**: Visit https://sunholo-data.github.io/docparse/dashboard.html
 
@@ -69,8 +69,7 @@ bash scripts/device-auth.sh
 # Named JSON parameters (preferred)
 curl -X POST "$DOCPARSE_URL/api/v1/parse" \
   -H "Content-Type: application/json" \
-  -H "x-api-key: $DOCPARSE_API_KEY" \
-  -d '{"filepath":"report.docx","output_format":"blocks"}'
+  -d "{\"filepath\":\"report.docx\",\"outputFormat\":\"blocks\",\"apiKey\":\"$DOCPARSE_API_KEY\"}"
 ```
 
 Output formats: `blocks` (structured JSON), `markdown`, `html`, `a2ui`
