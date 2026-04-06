@@ -1,6 +1,11 @@
 {
-  "name": "docparse",
-  "description": "DocParse — Universal document parsing API. Parse 13 formats into structured blocks via one endpoint.",
-  "version": "0.9.0",
-  "author": "Holosun ApS"
+  "name": "ailang-parse",
+  "description": "AILANG Parse — Universal document parsing and generation. Parse 17 formats into structured blocks via MCP. Includes auth, billing, cost estimation, and account management tools for AI agents.",
+  "version": "0.10.0",
+  "author": "Holosun ApS",
+  "mcpServers": {
+    "ailang-parse": {
+      "url": "https://docparse.ailang.sunholo.com/mcp/"
+    }
+  }
 }

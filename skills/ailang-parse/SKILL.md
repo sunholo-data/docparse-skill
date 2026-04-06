@@ -1,13 +1,29 @@
 ---
-name: docparse
-description: Parse documents with the DocParse API. Use when user asks to parse, extract, or convert documents (DOCX, PDF, PPTX, XLSX, CSV, HTML, Markdown, images, audio, video). Also use when user mentions DocParse, document parsing, unstructured data extraction, or needs to work with Office files programmatically. Triggers on "parse this file", "extract text from", "convert document", "DocParse", or any document format processing task.
+name: ailang-parse
+description: Parse documents with the AILANG Parse API. Use when user asks to parse, extract, or convert documents (DOCX, PDF, PPTX, XLSX, CSV, HTML, Markdown, EPUB, EML, images, audio, video). Also use when user mentions AILANG Parse, document parsing, unstructured data extraction, or needs to work with Office files programmatically. Triggers on "parse this file", "extract text from", "convert document", "AILANG Parse", or any document format processing task.
 ---
 
-# DocParse — Universal Document Parsing
+# AILANG Parse — Universal Document Parsing
 
-Parse any document into structured blocks via the DocParse API. 13 input formats, 4 output formats, one consistent schema.
+Parse any document into structured blocks via the AILANG Parse API. 17 input formats, 9 output formats, one consistent schema.
 
-## Quick Start
+## MCP Tools (Preferred)
+
+This plugin registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/`. The following tools are available automatically:
+
+| Tool | Purpose |
+|------|---------|
+| `mcpParse` | Parse any document into blocks, Markdown, or HTML |
+| `mcpConvert` | Convert between 17 input and 9 output formats |
+| `mcpFormats` | Discover formats, 26 samples, pricing tiers, capabilities |
+| `mcpEstimate` | Predict cost/latency before parsing |
+| `mcpAuth` | Start device auth to get an API key (RFC 8628) |
+| `mcpAuthPoll` | Poll for auth completion |
+| `mcpAccount` | View tier, quota, usage, pricing, history |
+
+**Recommended workflow**: Call `mcpFormats` first to discover capabilities, then `mcpEstimate` to check cost, then `mcpParse` to parse. If auth is needed, the error response tells you to call `mcpAuth`.
+
+## Shell Scripts (Fallback)
 
 ```bash
 # 1. Check connection
@@ -29,15 +45,19 @@ bash scripts/estimate.sh report.pdf blocks
 - User has DOCX, PDF, PPTX, XLSX, CSV, HTML, Markdown, EPUB, ODT, ODP, ODS files
 - User wants structured data from Office documents (tables, headings, track changes, comments)
 - User wants to extract text from PDFs, images, audio, or video
-- User asks about DocParse API endpoints or capabilities
+- User asks about AILANG Parse API endpoints or capabilities
 - User needs Unstructured.io API compatibility
 - User wants to estimate parsing costs or check quota
 
-## API Base URL
+## API Base URLs
 
-```
-https://ailang-dev-docparse-api-ejjw6zt3bq-ew.a.run.app
-```
+| Environment | URL |
+|-------------|-----|
+| **Production** | `https://docparse.ailang.sunholo.com` |
+| Test | `https://ailang-test-docparse-api-rrmdhcxo4a-ew.a.run.app` |
+| Dev | `https://ailang-dev-docparse-api-ejjw6zt3bq-ew.a.run.app` |
+
+Default: production. Set `DOCPARSE_URL` env var to override.
 
 ## Authentication
 
@@ -124,6 +144,44 @@ All errors include `suggested_fix` — a plain-text instruction you can act on d
 | Image (PNG, JPG, GIF, TIFF, WebP) | 3 |
 | Audio (MP3, WAV) | 5 |
 | Video (MP4) | 10 |
+
+## Deployment & Release
+
+DocParse uses a three-environment pipeline managed from the `ailang-multivac` repo:
+
+```
+Push to main  →  Dev  (automatic, per-push)
+Tag v*        →  Test (automatic, versioned images)
+Promote       →  Prod (manual, exact image copy — no rebuild)
+```
+
+| Action | Command (from ailang-multivac repo) |
+|--------|-------------------------------------|
+| Check status | `scripts/release.sh status` |
+| Tag for test | `scripts/release.sh tag docparse v0.9.0` |
+| Promote to prod | `scripts/release.sh promote docparse` |
+| Monitor builds | `gcloud builds list --project=ailang-multivac-deploy --region=europe-west3 --limit=5` |
+
+### Verify after deploy
+
+```bash
+# Test environment
+curl https://ailang-test-docparse-api-rrmdhcxo4a-ew.a.run.app/api/v1/health
+
+# Production
+curl https://docparse.ailang.sunholo.com/api/v1/health
+curl https://docparse.ailang.sunholo.com/api/v1/capabilities | jq .base_url
+```
+
+### GCP Projects
+
+| Env | Project | Prefix |
+|-----|---------|--------|
+| Dev | `ailang-multivac-dev` | `ailang-dev` |
+| Test | `ailang-multivac-test` | `ailang-test` |
+| Prod | `ailang-multivac` | `ailang` |
+
+Cloud Build triggers live in `ailang-multivac-deploy` (europe-west3).
 
 ## Resources
 
