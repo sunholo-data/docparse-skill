@@ -4,8 +4,11 @@ Parse any document into structured blocks using the [AILANG Parse API](https://w
 
 ## Install
 
-```bash
-claude install github:sunholo-data/docparse-skill
+Inside Claude Code, add the marketplace and install the plugin:
+
+```
+/plugin marketplace add sunholo-data/docparse-skill
+/plugin install ailang-parse@ailang-parse-marketplace
 ```
 
 ## What It Does
