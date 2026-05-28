@@ -1,0 +1,51 @@
+name: Validate plugin
+
+# Guards against shipping a plugin/marketplace that users can't install.
+# This repo broke twice for real users (sunholo-data/ailang-parse#1):
+#   - marketplace.json `owner` / plugin.json `author` were strings, not objects
+#   - the MCP server was declared inline in plugin.json and never registered
+# `claude plugin validate --strict` catches the schema/structure bugs; the
+# install smoke test catches the "validates but doesn't actually load" class
+# (the inline-mcpServers bug passed validation yet registered 0 servers).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    name: claude plugin validate --strict + install smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      # Offline schema/structure check. No API key needed.
+      - name: Validate manifests (strict)
+        run: claude plugin validate --strict .
+
+      # Actually install the plugin from this checkout and assert that both the
+      # skill AND the MCP server register. Install needs no API key — MCP tool
+      # schemas resolve lazily at runtime, not at install time.
+      - name: Install plugin + assert components register
+        run: |
+          set -euo pipefail
+          export CLAUDE_CONFIG_DIR="$RUNNER_TEMP/claude-config"
+          mkdir -p "$CLAUDE_CONFIG_DIR"
+          claude plugin marketplace add . --scope user
+          claude plugin install ailang-parse@ailang-parse-marketplace --scope user
+          DETAILS="$(claude plugin details ailang-parse)"
+          echo "$DETAILS"
+          echo "$DETAILS" | grep -q "Skills (1)" \
+            || { echo "::error::ailang-parse skill did not register"; exit 1; }
+          echo "$DETAILS" | grep -q "MCP servers (1)" \
+            || { echo "::error::ailang-parse MCP server did not register"; exit 1; }
+          echo "✓ skill + MCP server both registered"
