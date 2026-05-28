@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "ailang-parse": {
+      "type": "http",
+      "url": "https://docparse.ailang.sunholo.com/mcp/"
+    }
+  }
+}
