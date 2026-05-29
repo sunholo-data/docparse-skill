@@ -20,8 +20,13 @@ This plugin registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/
 | `mcpAuth` | Start device auth to get an API key (RFC 8628) |
 | `mcpAuthPoll` | Poll for auth completion |
 | `mcpAccount` | View tier, quota, usage, pricing, history |
+| `submit_feedback` | Report a bug / feature / docs gap to the maintainers |
 
-**Recommended workflow**: Call `mcpFormats` first to discover capabilities, then `mcpEstimate` to check cost, then `mcpParse` to parse. If auth is needed, the error response tells you to call `mcpAuth`.
+**Passing parameters**: every MCP tool string parameter is *required*. If you don't have a value yet — e.g. no API key, or no `requestId` — pass an **empty string `""`**; never omit it. Omitting a declared parameter returns `missing required parameter(s): ...`.
+
+**Recommended workflow**: Call `mcpFormats` first to discover capabilities, then `mcpEstimate` to check cost, then `mcpParse` to parse.
+
+**First run / no API key**: call `mcpParse` with `apiKey=""` **and** `requestId=""` (both empty strings). The server replies `AUTH_REQUIRED` with a `suggested_fix` to call `mcpAuth` — run that device flow, then retry `mcpParse` with the returned key. (Omitting `apiKey`/`requestId` instead returns a generic `missing required parameter(s)` error, not the auth prompt.)
 
 ## Shell Scripts (Fallback)
 
@@ -182,6 +187,16 @@ curl https://docparse.ailang.sunholo.com/api/v1/capabilities | jq .base_url
 | Prod | `ailang-multivac` | `ailang` |
 
 Cloud Build triggers live in `ailang-multivac-deploy` (europe-west3).
+
+## Reporting Issues & Feedback
+
+Hit a bug, a missing format, or a docs gap? Use the `submit_feedback` MCP tool
+with `package="sunholo/ailang_parse"` so it routes straight to the AILANG Parse
+maintainers — no need to leave the session to open a GitHub issue.
+
+- **Required**: `title`, `body`, `category` (`bug` | `feature` | `docs` | `limitation`), `ailang_version`.
+- **Optional**: `snippet` (≤4 KB repro/log), `contact` (free-form, for follow-up).
+- **Example**: `submit_feedback(title="PPTX speaker notes dropped", body="...", category="bug", ailang_version="0.9.0", package="sunholo/ailang_parse")`.
 
 ## Resources
 
