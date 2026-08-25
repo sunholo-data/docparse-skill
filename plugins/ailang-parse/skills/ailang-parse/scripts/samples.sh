@@ -2,7 +2,7 @@
 # List available sample files for testing
 set -euo pipefail
 
-DOCPARSE_URL="${DOCPARSE_URL:-https://ailang-dev-docparse-api-ejjw6zt3bq-ew.a.run.app}"
+DOCPARSE_URL="${DOCPARSE_URL:-https://docparse.ailang.sunholo.com}"
 
 result=$(curl -s --max-time 15 "$DOCPARSE_URL/api/v1/samples")
 

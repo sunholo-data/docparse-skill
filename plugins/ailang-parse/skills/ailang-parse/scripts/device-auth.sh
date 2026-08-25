@@ -3,7 +3,7 @@
 # The user approves via a URL, then this script polls until approved.
 set -euo pipefail
 
-DOCPARSE_URL="${DOCPARSE_URL:-https://ailang-dev-docparse-api-ejjw6zt3bq-ew.a.run.app}"
+DOCPARSE_URL="${DOCPARSE_URL:-https://docparse.ailang.sunholo.com}"
 LABEL="${1:-claude-code}"
 
 echo "Requesting device authorization..."
@@ -41,7 +41,7 @@ if [ -z "$device_code" ] || [ -z "$user_code" ]; then
   echo "Response: $result"
   echo ""
   echo "Note: Device auth requires Firestore. If running locally, get a key from the dashboard instead:"
-  echo "  https://sunholo-data.github.io/docparse/dashboard.html"
+  echo "  https://www.sunholo.com/docparse/dashboard.html"
   exit 1
 fi
 

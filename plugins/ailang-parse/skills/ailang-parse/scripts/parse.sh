@@ -3,7 +3,7 @@
 # Usage: bash scripts/parse.sh <filepath> [output_format]
 set -euo pipefail
 
-DOCPARSE_URL="${DOCPARSE_URL:-https://ailang-dev-docparse-api-ejjw6zt3bq-ew.a.run.app}"
+DOCPARSE_URL="${DOCPARSE_URL:-https://docparse.ailang.sunholo.com}"
 DOCPARSE_API_KEY="${DOCPARSE_API_KEY:-}"
 
 filepath="${1:-}"
@@ -17,7 +17,7 @@ if [ -z "$filepath" ]; then
 fi
 
 if [ -z "$DOCPARSE_API_KEY" ]; then
-  echo "Error: DOCPARSE_API_KEY not set. Get a key at https://sunholo-data.github.io/docparse/dashboard.html"
+  echo "Error: DOCPARSE_API_KEY not set. Get a key at https://www.sunholo.com/docparse/dashboard.html"
   echo "Or run: bash scripts/device-auth.sh"
   exit 1
 fi

@@ -45,4 +45,4 @@ Per-document pricing (not per-page). Free: 1,000 requests/month, 50 AI parses. P
 
 Base URL: `https://docparse.ailang.sunholo.com`
 MCP endpoint: `https://docparse.ailang.sunholo.com/mcp/`
-Documentation: `https://www.sunholo.com/docparse/`
+Documentation: `https://www.sunholo.com/ailang-parse/`

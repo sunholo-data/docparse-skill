@@ -3,7 +3,7 @@
 # Usage: bash scripts/estimate.sh <filepath> [output_format]
 set -euo pipefail
 
-DOCPARSE_URL="${DOCPARSE_URL:-https://ailang-dev-docparse-api-ejjw6zt3bq-ew.a.run.app}"
+DOCPARSE_URL="${DOCPARSE_URL:-https://docparse.ailang.sunholo.com}"
 DOCPARSE_API_KEY="${DOCPARSE_API_KEY:-}"
 
 filepath="${1:-}"

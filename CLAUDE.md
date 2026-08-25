@@ -1,6 +1,6 @@
 # AILANG Parse — Claude Code Plugin
 
-This is the Claude Code plugin for [AILANG Parse](https://www.sunholo.com/docparse/), a universal document parsing and generation API.
+This is the Claude Code plugin for [AILANG Parse](https://www.sunholo.com/ailang-parse/), a universal document parsing and generation API.
 
 ## MCP Server
 
@@ -9,7 +9,7 @@ This plugin registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/
 | Tool | Purpose | Auth Required |
 |------|---------|---------------|
 | `mcpParse` | Parse any document into blocks, Markdown, or HTML | Hosted: yes |
-| `mcpConvert` | Convert between 17 input and 9 output formats | Hosted: yes |
+| `mcpConvert` | Generate a document — docx, pptx, xlsx, odt, odp, ods, html, md, qmd | Hosted: yes |
 | `mcpFormats` | Discover formats, 26 samples, pricing tiers, capabilities | No |
 | `mcpEstimate` | Predict cost/latency before parsing | No |
 | `mcpAuth` | Start device auth to get an API key (RFC 8628) | No |

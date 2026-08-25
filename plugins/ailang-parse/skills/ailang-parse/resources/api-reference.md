@@ -3,7 +3,7 @@
 ## Base URL
 
 ```
-https://ailang-dev-docparse-api-ejjw6zt3bq-ew.a.run.app
+https://docparse.ailang.sunholo.com
 ```
 
 ## Authentication
@@ -81,6 +81,60 @@ Parse a document into structured blocks.
   }
 }
 ```
+
+## POST /api/v1/convert
+
+Generate a document in a target format. Deterministic conversion — the input is
+parsed to blocks, then a generator writes the target. Same generator code the
+`docparse` CLI runs.
+
+**Targets:** `html` `md` `qmd` `docx` `pptx` `xlsx` `odt` `odp` `ods`
+(`.docx`, `DOCX`, `markdown` and `htm` are normalised; anything else returns a
+typed `UNSUPPORTED_TARGET_FORMAT`, never a 500).
+
+**Input modes** — mutually exclusive, same as `/api/v1/parse`:
+
+| Mode | Field | Notes |
+|---|---|---|
+| Multipart upload | `filepath=@file` | The usual path — the API cannot read your disk |
+| Sample ID | `filepath` | e.g. `sample_docx_tables` |
+| Public/signed URL | `sourceUrl` | `https://…` |
+| GCS reference | `gcsRef` | `gs://…`, Business tier |
+
+**Request (upload):**
+```bash
+curl -X POST https://docparse.ailang.sunholo.com/api/v1/convert \
+  -F "filepath=@report.md" -F "target=docx" -F "apiKey=dp_..."
+```
+
+**Response** — the document comes back inline in JSON, not as a binary body:
+```json
+{
+  "status": "success",
+  "request_id": "req_...",
+  "source_format": "markdown",
+  "source_subtype": "md",
+  "target": "docx",
+  "filename": "report.docx",
+  "content_type": "application/vnd...wordprocessingml.document",
+  "encoding": "base64",
+  "size_bytes": 8213,
+  "content": "UEsDBBQ..."
+}
+```
+
+**`encoding` is load-bearing.** `base64` for the six ZIP container targets
+(docx, pptx, xlsx, odt, odp, ods), `utf8` for the three text targets (html, md,
+qmd). Branch on the field, never on the target — decoding a utf8 payload as
+base64 yields silent garbage.
+
+**Metering:** one request per conversion, on the same counters and key gate as
+`/parse`, plus the AI sub-quota when the *source* format needs AI (PDF, images).
+Output size does not affect the charge.
+
+Note: AI generation from a prompt (`--generate` / `--prompt`) is a local CLI
+feature and is **not** exposed here. This endpoint is deterministic conversion
+only.
 
 ## POST /api/v1/estimate
 

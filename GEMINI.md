@@ -16,7 +16,7 @@ The plugin registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/`
 1. **mcpFormats** — Discover formats, samples, pricing. Call this first.
 2. **mcpEstimate** — Predict cost/latency before parsing.
 3. **mcpParse** — Parse documents into blocks, Markdown, or HTML.
-4. **mcpConvert** — Convert between 17 input and 9 output formats.
+4. **mcpConvert** — Generate a document — docx, pptx, xlsx, odt, odp, ods, html, md, qmd.
 5. **mcpAuth** — Start RFC 8628 device auth to get an API key.
 6. **mcpAuthPoll** — Poll for auth completion.
 7. **mcpAccount** — View tier, quota, usage, pricing, history.
@@ -47,5 +47,5 @@ bash skills/ailang-parse/scripts/device-auth.sh       # Get API key
 ## API
 
 - Base URL: `https://docparse.ailang.sunholo.com`
-- Docs: `https://www.sunholo.com/docparse/`
+- Docs: `https://www.sunholo.com/ailang-parse/`
 - Pricing: Per-document (not per-page). Free tier: 1,000/month.
