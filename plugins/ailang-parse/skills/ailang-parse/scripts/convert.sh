@@ -55,9 +55,16 @@ import base64, json, os, sys
 
 data = json.loads(sys.stdin.read())
 
-# Success is @nowrap (raw JSON); errors come back wrapped in a "result" envelope
-# holding a JSON-encoded string. Unwrap so the failure is readable rather than
-# a wall of backslashes.
+# The live API wraps BOTH success and failure in a {"result": "<json string>"}
+# envelope, despite convertDocument being annotated @nowrap. Unwrap first and
+# branch second — reading `status` off the envelope sees nothing and reports an
+# empty error on a conversion that actually worked.
+if isinstance(data.get("result"), str):
+    try:
+        data = json.loads(data["result"])
+    except ValueError:
+        pass
+
 if data.get("status") != "success":
     inner = data.get("result", data)
     if isinstance(inner, str):

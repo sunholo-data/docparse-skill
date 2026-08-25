@@ -170,7 +170,14 @@ curl -X POST "$DOCPARSE_URL/api/v1/convert" \
   -d "{\"filepath\":\"sample_docx_tables\",\"target\":\"html\",\"apiKey\":\"$DOCPARSE_API_KEY\"}"
 ```
 
-Response:
+Response — inside the serve-api envelope, like `/api/v1/parse`. Unwrap `result`
+(a JSON-encoded string) first:
+
+```json
+{"result": "{\"status\":\"success\", ...}"}
+```
+
+Unwrapped:
 
 ```json
 {"status": "success", "target": "docx", "filename": "report.docx",

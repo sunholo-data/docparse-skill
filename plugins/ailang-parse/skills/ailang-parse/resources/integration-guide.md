@@ -43,6 +43,9 @@ with open("report.md", "rb") as fh:
         data={"target": "docx", "apiKey": API_KEY},
     )
 out = resp.json()
+# Unwrap the serve-api envelope, same as /parse
+if isinstance(out.get("result"), str):
+    out = json.loads(out["result"])
 
 # encoding is load-bearing: base64 for docx/pptx/xlsx/odt/odp/ods,
 # utf8 for html/md/qmd. Branch on it, never on the target.
@@ -82,7 +85,9 @@ form.append("filepath", new Blob([markdownText], { type: "text/markdown" }), "re
 form.append("target", "docx");
 form.append("apiKey", API_KEY);
 
-const out = await (await fetch(`${API_BASE}/api/v1/convert`, { method: "POST", body: form })).json();
+let out = await (await fetch(`${API_BASE}/api/v1/convert`, { method: "POST", body: form })).json();
+// Unwrap the serve-api envelope, same as /parse
+if (typeof out.result === "string") out = JSON.parse(out.result);
 
 // encoding is load-bearing: base64 for docx/pptx/xlsx/odt/odp/ods,
 // utf8 for html/md/qmd. Branch on it, never on the target.
@@ -104,7 +109,7 @@ curl -X POST https://docparse.ailang.sunholo.com/api/v1/parse \
 # Generate a docx from Markdown (upload; response carries the file inline)
 curl -X POST https://docparse.ailang.sunholo.com/api/v1/convert \
   -F "filepath=@report.md" -F "target=docx" -F "apiKey=dp_your_key_here" \
-  | python3 -c 'import base64,json,sys; d=json.load(sys.stdin); \
+  | python3 -c 'import base64,json,sys; d=json.load(sys.stdin); d=json.loads(d["result"]) if isinstance(d.get("result"),str) else d; \
 open(d["filename"],"wb").write(base64.b64decode(d["content"]) if d["encoding"]=="base64" else d["content"].encode())'
 
 # Estimate cost (no auth needed)

@@ -107,7 +107,15 @@ curl -X POST https://docparse.ailang.sunholo.com/api/v1/convert \
   -F "filepath=@report.md" -F "target=docx" -F "apiKey=dp_..."
 ```
 
-**Response** — the document comes back inline in JSON, not as a binary body:
+**Response** — the document comes back inline in JSON, not as a binary body.
+Like `/api/v1/parse`, it arrives inside the serve-api envelope, so unwrap
+`result` (a JSON-encoded string) before reading the fields:
+
+```json
+{"result": "{\"status\":\"success\",\"target\":\"docx\", ...}"}
+```
+
+Unwrapped:
 ```json
 {
   "status": "success",
