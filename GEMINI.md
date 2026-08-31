@@ -11,23 +11,26 @@ This repository is a plugin for AI coding assistants that provides universal doc
 
 ## MCP Server
 
-The plugin registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/` providing 7 tools:
+The plugin registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/` providing 10 tools:
 
-1. **mcpFormats** — Discover formats, samples, pricing. Call this first.
-2. **mcpEstimate** — Predict cost/latency before parsing.
-3. **mcpParse** — Parse documents into blocks, Markdown, or HTML.
+1. **mcpFormats** — Discover formats, samples, pricing. Call this first. No auth needed.
+2. **mcpEstimate** — Predict cost/latency before parsing. No auth needed.
+3. **mcpParse** — Parse documents into blocks, Markdown, HTML, or A2UI.
 4. **mcpConvert** — Generate a document — docx, pptx, xlsx, odt, odp, ods, html, md, qmd.
-5. **mcpAuth** — Start RFC 8628 device auth to get an API key.
-6. **mcpAuthPoll** — Poll for auth completion.
-7. **mcpAccount** — View tier, quota, usage, pricing, history.
+5. **editDocument** — Parse a document, apply JSON edit deltas, return modified blocks (Office formats only).
+6. **getUploadUrl** — Business tier only. Pre-authenticated GCS upload URL for large files.
+7. **mcpAuth** — Start RFC 8628 device auth to get an API key.
+8. **mcpAuthPoll** — Poll for auth completion.
+9. **mcpAccount** — `status` (default), `keys`, `usage`, `pricing` (no auth).
+10. **submit_feedback** — Anonymous bug/feature/docs report. Use `package="sunholo/ailang_parse"`.
 
 ## Supported Formats
 
-**Input (17):** DOCX, PPTX, XLSX, ODT, ODP, ODS, HTML, Markdown, CSV, EPUB, EML, MBOX, PDF, PNG, JPG, MP3, MP4
+**Input (17):** DOCX, PPTX, XLSX, ODT, ODP, ODS, HTML, Markdown, CSV, EPUB, EML, MBOX, TEX, RTF, PDF, PNG, JPG
 
 **Output (9):** DOCX, PPTX, XLSX, ODT, ODP, ODS, HTML, Markdown, QMD
 
-Office/text formats are deterministic (5-50ms, no AI). PDF, images, audio, video require AI.
+Office/text formats are deterministic (5-50ms, no AI). PDF and images require AI. Audio/video are self-host only — not on the hosted API.
 
 ## Authentication
 

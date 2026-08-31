@@ -4,17 +4,20 @@ This is the Claude Code plugin for [AILANG Parse](https://www.sunholo.com/ailang
 
 ## MCP Server
 
-This plugin registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/` which provides 7 tools:
+This plugin registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/` which provides 10 tools:
 
 | Tool | Purpose | Auth Required |
 |------|---------|---------------|
-| `mcpParse` | Parse any document into blocks, Markdown, or HTML | Hosted: yes |
+| `mcpParse` | Parse any document into blocks, Markdown, HTML, or A2UI | Hosted: yes |
 | `mcpConvert` | Generate a document — docx, pptx, xlsx, odt, odp, ods, html, md, qmd | Hosted: yes |
+| `editDocument` | Parse, apply JSON edit deltas, return modified blocks (Office formats only) | Hosted: yes |
+| `getUploadUrl` | Pre-authenticated GCS upload URL for files > 32MB | Hosted: yes, Business tier |
 | `mcpFormats` | Discover formats, 26 samples, pricing tiers, capabilities | No |
 | `mcpEstimate` | Predict cost/latency before parsing | No |
 | `mcpAuth` | Start device auth to get an API key (RFC 8628) | No |
 | `mcpAuthPoll` | Poll for auth completion | No |
-| `mcpAccount` | View tier, quota, usage, pricing, history | Yes (except `action:"pricing"`) |
+| `mcpAccount` | `status` (default), `keys`, `usage`, `pricing` | Yes (except `action:"pricing"`) |
+| `submit_feedback` | Anonymous bug/feature/docs report; `package="sunholo/ailang_parse"` routes to the AILANG Parse inbox | No |
 
 ## Recommended Workflow
 
@@ -46,11 +49,13 @@ bash skills/ailang-parse/scripts/device-auth.sh    # Get API key
 
 ## Supported Formats
 
-**Input (17):** DOCX, PPTX, XLSX, ODT, ODP, ODS, HTML, Markdown, CSV, EPUB, EML, MBOX, PDF, PNG, JPG, MP3, MP4
+**Input (17):** DOCX, PPTX, XLSX, ODT, ODP, ODS, HTML, Markdown, CSV, EPUB, EML, MBOX, TEX, RTF, PDF, PNG, JPG
 
 **Output (9):** DOCX, PPTX, XLSX, ODT, ODP, ODS, HTML, Markdown, QMD (Quarto)
 
-Office formats are deterministic (5-50ms). PDF, images, audio, video require AI.
+**Parse outputs:** blocks, markdown, html, a2ui
+
+Office formats are deterministic (5-50ms). PDF and images require AI. Audio/video formats (WAV, MP3, MP4, …) are **self-host only** — not on the hosted API.
 
 ## Pricing
 

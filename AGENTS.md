@@ -4,17 +4,20 @@ This repository is a plugin for AI coding assistants that provides universal doc
 
 ## What This Plugin Does
 
-When installed, it registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/` with 7 tools for document parsing, format conversion, cost estimation, authentication, and account management.
+When installed, it registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/` with 10 tools for document parsing, editing, generation, format conversion, cost estimation, authentication, file upload, and account management.
 
 ## Available MCP Tools
 
 - **mcpFormats** — Call first. Returns all 17 input formats, 9 output formats, 26 test samples, pricing tiers, and service capabilities.
-- **mcpEstimate** — Predict cost and latency before parsing. Shows if AI is required.
-- **mcpParse** — Parse a document into structured blocks, Markdown, or HTML. Pass `apiKey` for hosted mode.
-- **mcpConvert** — Convert between formats (e.g. DOCX to HTML, Markdown to PPTX).
+- **mcpEstimate** — Predict cost and latency before parsing. Shows if AI is required. No auth needed.
+- **mcpParse** — Parse a document into structured blocks, Markdown, HTML, or A2UI. Pass `apiKey` for hosted mode.
+- **mcpConvert** — Generate a document: docx, pptx, xlsx, odt, odp, ods, html, md, qmd. `input` is a file path, sample_id, https:// URL, or gs:// ref (Business tier).
+- **editDocument** — Parse a document, apply JSON edit deltas, and return the modified blocks. Deterministic Office formats only.
+- **getUploadUrl** — Business tier only. Returns a pre-authenticated GCS upload URL to PUT large files, bypassing the 32MB request limit. Then pass the `gcs_ref` to `mcpParse`.
 - **mcpAuth** — Start RFC 8628 device authorization. Returns a URL for the user to approve.
 - **mcpAuthPoll** — Poll for auth completion. Returns API key on approval.
-- **mcpAccount** — View account tier, quota, usage, pricing, or parse history. `action:"pricing"` works without auth.
+- **mcpAccount** — `action:"status"` (default, quota/usage), `"keys"` (list keys with per-key usage), `"pricing"` (no auth required), `"usage"` (alias for keys).
+- **submit_feedback** — Anonymous bug/feature/docs report (`title`, `body`, `category` = bug|feature|docs|limitation, `ailang_version` required; optional `package="sunholo/ailang_parse"` to route to the AILANG Parse inbox).
 
 ## Authentication Flow
 
@@ -29,9 +32,9 @@ When installed, it registers an MCP server at `https://docparse.ailang.sunholo.c
 | Category | Formats | AI Required |
 |----------|---------|-------------|
 | Office | DOCX, PPTX, XLSX, ODT, ODP, ODS | No (deterministic, 5-50ms) |
-| Text | CSV, Markdown, HTML, EPUB, EML, MBOX | No |
+| Text | CSV, Markdown, HTML, EPUB, EML, MBOX, TEX, RTF | No |
 | PDF/Image | PDF, PNG, JPG | Yes |
-| Audio/Video | MP3, MP4 | Yes |
+| Audio/Video | WAV, MP3, MP4, and other media | Self-host only — not on the hosted API (use the AILANG CLI with your own AI key) |
 
 ## Error Handling
 

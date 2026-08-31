@@ -212,6 +212,31 @@ Request device authorization code (RFC 8628). For headless agents.
 {"args": ["my-agent-label", "parse"]}
 ```
 
+Companion endpoints: `POST /api/v1/auth/device/poll` (poll after starting the flow), `POST /api/v1/auth/device/inspect` (check a flow's status) and `POST /api/v1/auth/device/approve` (approve from the dashboard).
+
+## POST /api/v1/upload/url
+
+Request a pre-authenticated GCS upload URL. **Business tier only** — bypasses the 32MB hosted request limit. Request `{"filename": "big.pdf", "mimeType": "application/pdf", "apiKey": "dp_..."}`, PUT the file bytes to the returned URL, then pass the returned `gcs_ref` to `POST /api/v1/parse`.
+
+## API Keys
+
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /api/v1/keys/list` | List your keys with per-key usage (`mcpAccount action:"keys"` delegates here) |
+| `POST /api/v1/keys/usage` | Usage counters for your keys |
+| `POST /api/v1/keys/revoke` | Revoke a key |
+| `POST /api/v1/keys/rotate` | Rotate a key |
+
+## Request Replay & History (v0.9.0+)
+
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /api/v1/requests/history` | List your past requests |
+| `POST /api/v1/requests/replay` | Replay a previous request by id |
+
+Every response's `meta.request_id` (see the envelope) is the replay key;
+`mcpParse`'s `requestId` parameter is reserved for this.
+
 ## Error Response Format (v0.9.0)
 
 ```json

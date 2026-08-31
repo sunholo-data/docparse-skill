@@ -15,13 +15,15 @@ This plugin registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/
 
 | Tool | Purpose |
 |------|---------|
-| `mcpParse` | Parse any document into blocks, Markdown, or HTML |
+| `mcpParse` | Parse any document into blocks, Markdown, HTML, or A2UI |
 | `mcpConvert` | **Generate** a document — converts any input into docx, pptx, xlsx, odt, odp, ods, html, md, or qmd |
+| `editDocument` | Parse a document, apply JSON edit deltas, return the modified blocks (Office formats only) |
+| `getUploadUrl` | Pre-authenticated GCS upload URL for files over the 32MB hosted limit (**Business tier only**) |
 | `mcpFormats` | Discover formats, samples, pricing tiers, capabilities |
 | `mcpEstimate` | Predict cost/latency before parsing |
 | `mcpAuth` | Start device auth to get an API key (RFC 8628) |
 | `mcpAuthPoll` | Poll for auth completion |
-| `mcpAccount` | View tier, quota, usage, pricing, history |
+| `mcpAccount` | `action`: `status` (default — tier/quota/usage), `keys` (list keys + per-key usage), `usage` (alias for keys), `pricing` (no auth) |
 | `submit_feedback` | Report a bug / feature / docs gap to the maintainers |
 
 **Passing parameters**: every MCP tool string parameter is *required*. If you don't have a value yet — e.g. no API key, or no `requestId` — pass an **empty string `""`**; never omit it. Omitting a declared parameter returns `missing required parameter(s): ...`.
@@ -69,6 +71,24 @@ report"`) exists only in the local `docparse` CLI. It is **not** on the hosted
 API — `/api/v1/convert` is deterministic conversion only. If a user wants a
 document authored from a prompt, write the Markdown yourself and convert it.
 
+## Editing Documents (deltas)
+
+`editDocument(filepath, deltas, apiKey)` parses a document, applies a JSON array
+of edit deltas, and returns the modified blocks — same schema as `mcpParse` with
+`outputFormat="blocks"`. Pass `deltas=""` for a round-trip (parse + unchanged
+blocks back).
+
+- Only deterministic Office formats work: docx, pptx, xlsx, odt, odp, ods.
+  AI-required formats (PDF, images, audio, video) are rejected.
+- The tool returns blocks, not a file — use the AILANG SDK or CLI to generate a
+  file from the returned blocks.
+
+## Uploading Large Files
+
+`getUploadUrl(filename, mimeType, apiKey)` returns a pre-authenticated GCS URL
+(**Business tier only**). PUT the file bytes to that URL, then pass the returned
+`gcs_ref` to `mcpParse`. This bypasses the 32MB hosted request limit.
+
 ## Shell Scripts (Fallback)
 
 ```bash
@@ -94,7 +114,8 @@ bash scripts/convert.sh report.md docx
 - User asks to parse, extract, read, or convert a document
 - User has DOCX, PDF, PPTX, XLSX, CSV, HTML, Markdown, EPUB, ODT, ODP, ODS, EML, TEX, RTF files
 - User wants structured data from Office documents (tables, headings, track changes, comments)
-- User wants to extract text from PDFs, images, audio, or video
+- User wants to extract text from PDFs or images
+- User has audio/video to parse — **self-host only**: the hosted API rejects it; use the AILANG CLI with your own AI key
 
 **Generating:**
 - User asks to create, write, author, build, or make a document, deck, or spreadsheet
@@ -252,8 +273,9 @@ All errors include `suggested_fix` — a plain-text instruction you can act on d
 | Text (CSV, Markdown, HTML, EPUB) | 1 |
 | PDF | 3 |
 | Image (PNG, JPG, GIF, TIFF, WebP) | 3 |
-| Audio (MP3, WAV) | 5 |
-| Video (MP4) | 10 |
+
+Audio and video formats (WAV, MP3, MP4, …) are **self-host only** — the hosted
+API does not parse them, so they carry no hosted credit cost.
 
 Conversion is charged **per generated document**, on the same counters as parse
 — the cost is driven by the *source* format above, and output size does not

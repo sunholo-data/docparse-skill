@@ -17,13 +17,16 @@ This plugin registers an **MCP server** and a **skill** for document parsing and
 
 | Tool | Purpose |
 |------|---------|
-| `mcpParse` | Parse any document into blocks, Markdown, or HTML |
+| `mcpParse` | Parse any document into blocks, Markdown, HTML, or A2UI |
 | `mcpConvert` | Generate a document — docx, pptx, xlsx, odt, odp, ods, html, md, qmd |
+| `editDocument` | Parse a document, apply JSON edit deltas, return modified blocks (Office formats only) |
+| `getUploadUrl` | Pre-authenticated GCS upload URL for large files (Business tier) |
 | `mcpFormats` | Discover formats, samples, pricing, capabilities |
 | `mcpEstimate` | Predict cost/latency before parsing |
 | `mcpAuth` | Get an API key via device auth (RFC 8628) |
 | `mcpAuthPoll` | Poll for auth completion |
-| `mcpAccount` | View tier, quota, usage, pricing, history |
+| `mcpAccount` | View status, keys/usage, or pricing (no auth for pricing) |
+| `submit_feedback` | Report a bug / feature / docs gap to the maintainers |
 
 Just ask Claude to parse or produce a document — the MCP tools handle everything automatically, including authentication.
 
@@ -73,7 +76,7 @@ Or get one via:
 | Office | DOCX, PPTX, XLSX, ODT, ODP, ODS | 5-50ms deterministic |
 | Text | CSV, Markdown, HTML, EPUB, EML, MBOX, TEX, RTF | 5-15ms deterministic |
 | PDF/Image | PDF, PNG, JPG | AI-powered |
-| Audio/Video | MP3, MP4 | AI-powered |
+| Audio/Video | WAV, MP3, MP4, and other media | Self-host only — use the AILANG CLI with your own AI key, not on the hosted API |
 
 **Generation (9):** DOCX, PPTX, XLSX, ODT, ODP, ODS, HTML, Markdown, QMD (Quarto)
 
