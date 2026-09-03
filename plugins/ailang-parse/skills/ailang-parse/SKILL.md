@@ -104,14 +104,17 @@ Three things that bite:
    `for f in *.docx; do docparse "$f"; done` recompiles per file and is ~10x slower.
 2. **Pass `--output-dir`.** The default output lands in `docparse/data` inside
    the clone, which reads as "the output went missing".
-3. **Try local PDF backends before `ai`.** `pdftotext` → `docling` → `liteparse`
-   → `ai`. Only a scanned/image-only PDF genuinely needs `ai`, and that decision
-   sends the document to an AI provider — put it to the user first.
+3. **Let the local PDF backends run before reaching for `ai`.** On the default
+   backend the CLI already escalates `pdftotext` → `docling` by itself when
+   there is no text layer, because both are free. `ai` is never automatic — it
+   costs money and sends the document to a provider, so put it to the user.
+   (`liteparse` is not an OCR fallback: it reads font sizes in an existing text
+   layer and fails on a scan exactly as `pdftotext` does.)
 
 Install, the full flag list, environment variables, and the failure-mode table
 are in [resources/local-cli.md](resources/local-cli.md).
 
-## MCP Tools (Preferred)
+## MCP Tools (the hosted path)
 
 This plugin registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/`. The following tools are available automatically:
 
@@ -191,7 +194,7 @@ blocks back).
 (**Business tier only**). PUT the file bytes to that URL, then pass the returned
 `gcs_ref` to `mcpParse`. This bypasses the 32MB hosted request limit.
 
-## Shell Scripts (Fallback)
+## Shell Scripts (hosted API, no MCP)
 
 ```bash
 # 1. Check connection
