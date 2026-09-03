@@ -4,10 +4,34 @@ This repository is a plugin for AI coding assistants that provides universal doc
 
 ## Project Structure
 
-- `.claude-plugin/` — Plugin manifest (plugin.json, marketplace.json). Registers an MCP server.
-- `skills/ailang-parse/` — Skill definition with SKILL.md, scripts, and resources.
-- `skills/ailang-parse/scripts/` — Shell scripts for parsing, estimation, auth, health checks.
-- `skills/ailang-parse/resources/` — API reference and integration guide.
+- `.claude-plugin/marketplace.json` — Marketplace manifest.
+- `plugins/ailang-parse/.claude-plugin/plugin.json` + `.mcp.json` — Plugin manifest; registers the MCP server.
+- `plugins/ailang-parse/skills/ailang-parse/SKILL.md` — Skill definition.
+- `plugins/ailang-parse/skills/ailang-parse/scripts/` — Shell scripts for parsing, estimation, auth, health checks.
+- `plugins/ailang-parse/skills/ailang-parse/resources/` — API reference, integration guide, and local CLI reference.
+
+## Hosted API vs local CLI
+
+The MCP server is the **hosted** service — documents are uploaded to it. The
+local `docparse` CLI runs the same parsers on the user's machine and uploads
+nothing. Pick one deliberately and state which you are using.
+
+Prefer the local CLI for confidential or restricted material, files over 32MB,
+audio/video, PDFs needing the `docling`/`liteparse` backends (hosted is capped
+at 30s), and `--generate` (prompt-to-document, not on the hosted API).
+
+```bash
+curl -fsSL https://ailang.sunholo.com/install.sh | bash
+git clone https://github.com/sunholo-data/ailang-parse.git
+ln -s "$PWD/ailang-parse/bin/docparse" /usr/local/bin/docparse
+
+docparse report.docx --output-dir ./parsed
+```
+
+Caveat: only deterministic backends are truly offline. `--pdf-backend ai`,
+`--describe`, `--summarize`, images and audio/video send content to an AI
+provider. Full reference:
+`plugins/ailang-parse/skills/ailang-parse/resources/local-cli.md`.
 
 ## MCP Server
 
@@ -30,7 +54,7 @@ The plugin registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/`
 
 **Output (9):** DOCX, PPTX, XLSX, ODT, ODP, ODS, HTML, Markdown, QMD
 
-Office/text formats are deterministic (5-50ms, no AI). PDF and images require AI. Audio/video are self-host only — not on the hosted API.
+Office/text formats are deterministic (5-50ms, no AI). On the hosted API, PDF and images require AI; the local CLI parses PDFs deterministically via `pdftotext`. Audio/video are local CLI only — not on the hosted API.
 
 ## Authentication
 
@@ -40,11 +64,11 @@ API keys use `dp_` prefix. Get one via the device auth flow (`mcpAuth` tool) or 
 
 ```bash
 export DOCPARSE_API_KEY="dp_your_key"
-bash skills/ailang-parse/scripts/health.sh          # Check API
-bash skills/ailang-parse/scripts/parse.sh FILE FMT   # Parse document
-bash skills/ailang-parse/scripts/estimate.sh FILE     # Estimate cost
-bash skills/ailang-parse/scripts/samples.sh           # List test files
-bash skills/ailang-parse/scripts/device-auth.sh       # Get API key
+bash plugins/ailang-parse/skills/ailang-parse/scripts/health.sh        # Check API
+bash plugins/ailang-parse/skills/ailang-parse/scripts/parse.sh FILE FMT # Parse document
+bash plugins/ailang-parse/skills/ailang-parse/scripts/estimate.sh FILE  # Estimate cost
+bash plugins/ailang-parse/skills/ailang-parse/scripts/samples.sh        # List test files
+bash plugins/ailang-parse/skills/ailang-parse/scripts/device-auth.sh    # Get API key
 ```
 
 ## API

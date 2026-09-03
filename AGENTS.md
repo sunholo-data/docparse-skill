@@ -6,6 +6,34 @@ This repository is a plugin for AI coding assistants that provides universal doc
 
 When installed, it registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/` with 10 tools for document parsing, editing, generation, format conversion, cost estimation, authentication, file upload, and account management.
 
+## Choose the path before the first call
+
+The MCP tools are the **hosted** service: the document is uploaded. The local
+`docparse` CLI runs the same parsers on the machine, uploading nothing. Tell the
+user which one you are about to use.
+
+Use the local CLI when the material is confidential, restricted, or the user
+asked to keep it offline; for files over 32MB; for audio/video; when a PDF needs
+the `docling`/`liteparse` backends (the hosted API's 30s cap kills them); or for
+`--generate` (prompt-to-document, hosted has no equivalent). When in doubt about
+sensitivity, ask — do not upload by default.
+
+```bash
+curl -fsSL https://ailang.sunholo.com/install.sh | bash
+git clone https://github.com/sunholo-data/ailang-parse.git
+ln -s "$PWD/ailang-parse/bin/docparse" /usr/local/bin/docparse
+
+docparse report.docx --output-dir ./parsed
+docparse ~/inbox/ --output-dir ./parsed        # batch: compiles once, ~10x faster than a loop
+docparse notes.md --convert slides.pptx
+```
+
+Note that "local" is a property of the backend: deterministic formats and
+`pdftotext`/`docling`/`liteparse` PDFs never touch the network, but
+`--pdf-backend ai`, `--describe`, `--summarize`, images and audio/video send
+content to an AI provider. Full reference:
+`plugins/ailang-parse/skills/ailang-parse/resources/local-cli.md`.
+
 ## Available MCP Tools
 
 - **mcpFormats** — Call first. Returns all 17 input formats, 9 output formats, 26 test samples, pricing tiers, and service capabilities.
@@ -34,7 +62,7 @@ When installed, it registers an MCP server at `https://docparse.ailang.sunholo.c
 | Office | DOCX, PPTX, XLSX, ODT, ODP, ODS | No (deterministic, 5-50ms) |
 | Text | CSV, Markdown, HTML, EPUB, EML, MBOX, TEX, RTF | No |
 | PDF/Image | PDF, PNG, JPG | Yes |
-| Audio/Video | WAV, MP3, MP4, and other media | Self-host only — not on the hosted API (use the AILANG CLI with your own AI key) |
+| Audio/Video | WAV, MP3, MP4, and other media | Local CLI only — the hosted API rejects these |
 
 ## Error Handling
 

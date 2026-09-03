@@ -2,6 +2,26 @@
 
 This is the Claude Code plugin for [AILANG Parse](https://www.sunholo.com/ailang-parse/), a universal document parsing and generation API.
 
+## Two paths: hosted MCP, or the local CLI
+
+The MCP tools below call the **hosted** service — documents are uploaded. The
+local `docparse` CLI runs the same parsers on the user's machine with nothing
+uploaded. Decide before the first call and say which path you are using.
+
+Prefer the **local CLI** when the material is confidential/restricted, when the
+user says "don't upload this", for files over 32MB, for audio/video, when a PDF
+needs `docling`/`liteparse` (hosted is capped at 30s), or for `--generate`
+(prompt-to-document, which the hosted API does not have).
+
+```bash
+command -v docparse || echo "not installed"
+docparse report.docx --output-dir ./parsed     # -> parsed/report.json + .md
+docparse notes.md --convert slides.pptx        # writes a real file, not base64 JSON
+```
+
+Install and the full reference:
+`plugins/ailang-parse/skills/ailang-parse/resources/local-cli.md`.
+
 ## MCP Server
 
 This plugin registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/` which provides 10 tools:
@@ -39,12 +59,12 @@ This plugin registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/
 If MCP is unavailable, shell scripts in `skills/ailang-parse/scripts/` provide the same functionality:
 
 ```bash
-bash skills/ailang-parse/scripts/health.sh        # Check API health
-bash skills/ailang-parse/scripts/parse.sh FILE FMT # Parse a document
-bash skills/ailang-parse/scripts/estimate.sh FILE  # Estimate cost
-bash skills/ailang-parse/scripts/samples.sh        # List test files
-bash skills/ailang-parse/scripts/capabilities.sh   # Full service contract
-bash skills/ailang-parse/scripts/device-auth.sh    # Get API key
+bash plugins/ailang-parse/skills/ailang-parse/scripts/health.sh        # Check API health
+bash plugins/ailang-parse/skills/ailang-parse/scripts/parse.sh FILE FMT # Parse a document
+bash plugins/ailang-parse/skills/ailang-parse/scripts/estimate.sh FILE  # Estimate cost
+bash plugins/ailang-parse/skills/ailang-parse/scripts/samples.sh        # List test files
+bash plugins/ailang-parse/skills/ailang-parse/scripts/capabilities.sh   # Full service contract
+bash plugins/ailang-parse/skills/ailang-parse/scripts/device-auth.sh    # Get API key
 ```
 
 ## Supported Formats
@@ -55,7 +75,7 @@ bash skills/ailang-parse/scripts/device-auth.sh    # Get API key
 
 **Parse outputs:** blocks, markdown, html, a2ui
 
-Office formats are deterministic (5-50ms). PDF and images require AI. Audio/video formats (WAV, MP3, MP4, …) are **self-host only** — not on the hosted API.
+Office formats are deterministic (5-50ms). On the hosted API, PDF and images require AI; the local CLI parses PDFs deterministically with `pdftotext`. Audio/video formats (WAV, MP3, MP4, …) are **local CLI only** — not on the hosted API.
 
 ## Pricing
 

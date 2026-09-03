@@ -1,6 +1,6 @@
 ---
 name: ailang-parse
-description: Parse AND generate documents with the AILANG Parse API. Use when the user asks to parse, extract, read, or convert documents (DOCX, PDF, PPTX, XLSX, ODT, ODP, ODS, CSV, HTML, Markdown, EPUB, EML, TEX, RTF, images, audio, video) — and equally when they ask to CREATE, generate, write, author, build, or make a document, deck, spreadsheet, or report in any Office format. Triggers on "parse this file", "extract text from", "convert document", "turn these notes into a PowerPoint", "make me a Word doc", "write this up as a docx", "generate a spreadsheet", "build a report", "export this as Quarto", or any document format processing task.
+description: Parse AND generate documents with the AILANG Parse API. Use when the user asks to parse, extract, read, or convert documents (DOCX, PDF, PPTX, XLSX, ODT, ODP, ODS, CSV, HTML, Markdown, EPUB, EML, TEX, RTF, images, audio, video) — and equally when they ask to CREATE, generate, write, author, build, or make a document, deck, spreadsheet, or report in any Office format. Triggers on "parse this file", "extract text from", "convert document", "turn these notes into a PowerPoint", "make me a Word doc", "write this up as a docx", "generate a spreadsheet", "build a report", "export this as Quarto", or any document format processing task. Covers BOTH the hosted API/MCP path and the local `docparse` CLI, which parses locally and uploads nothing — use the local path when documents are confidential, restricted, or must not leave the machine, when the user says "don't upload this" or "run it locally", for files over 32MB, for audio/video, or when a slow local PDF backend (docling, liteparse) is needed.
 ---
 
 # AILANG Parse — Universal Document Parsing and Generation
@@ -8,6 +8,78 @@ description: Parse AND generate documents with the AILANG Parse API. Use when th
 Two directions, one schema. **Parse** any document into structured blocks, and
 **generate** documents in 9 formats. Call `mcpFormats` for the live list of what
 is supported — it is the service's own answer and never goes stale.
+
+## Choose the path first: local CLI or hosted API
+
+There are two ways to run AILANG Parse, and they run the **same parsers** —
+the difference is where the document goes.
+
+| | Local CLI (`docparse`) | Hosted API / MCP tools |
+|---|---|---|
+| Where the document goes | stays on the machine | **uploaded to the cloud service** |
+| Setup | clone + AILANG runtime | none — the plugin's MCP server |
+| API key / quota | none | `dp_` key, counts against tier |
+| File size | unlimited | 32MB (Business tier can pre-upload to GCS) |
+| Audio / video | supported | **rejected** — self-host only |
+| Slow PDF backends (`docling`, `liteparse`) | up to 20 min | unusable — hard 30s cap |
+| AI generation from a prompt | `--generate` | not available |
+| Output of a conversion | a real file on disk | base64/utf8 inside JSON |
+
+**Decide before the first call, and say which path you are using.** Users have
+been surprised to find an MCP parse had uploaded a document.
+
+Use the **local CLI** when any of these is true:
+
+- The material is confidential, restricted, client-privileged, under NDA, or the
+  user has said anything like "don't upload this" / "keep it local" / "run it
+  offline". **When in doubt, ask — do not upload by default.**
+- The file is over 32MB, or is audio/video.
+- The PDF needs `docling` or `liteparse` (the hosted 30s cap kills both).
+- The user wants a document AI-generated from a prompt (`--generate`).
+- There is a folder of files to batch, or no network.
+
+Use the **hosted API / MCP tools** when:
+
+- `docparse` is not installed and the content is not sensitive.
+- You want zero setup, or need `mcpEstimate` / `mcpAccount` / quota data.
+- The caller is a remote agent with no shell.
+
+The two coexist fine. See [Local CLI reference](resources/local-cli.md) for
+install, flags, and exactly which invocations touch the network.
+
+**One caveat that decides real cases:** "local" is a property of the *backend*,
+not of the CLI. Deterministic paths (Office, ODF, text, HTML, EPUB, email, and
+PDF via `pdftotext`/`docling`/`liteparse`) never touch the network. But
+`--pdf-backend ai`, `--describe`, `--summarize`, images, and audio/video all
+send content to the AI provider. Running locally does not by itself keep a
+scanned PDF off the wire.
+
+## Local CLI Quick Reference
+
+```bash
+command -v docparse || echo "not installed — see resources/local-cli.md"
+
+docparse report.docx                       # -> <out>/report.json + .md
+docparse ~/case-files/ --output-dir /tmp/parsed   # batch a folder; compiles ONCE
+docparse contract.pdf                      # deterministic pdftotext, no AI, no network
+docparse contract.pdf --pdf-backend docling       # local ML layout; slow, allowed 20m
+docparse notes.md --convert slides.pptx    # writes a real file, not base64 JSON
+docparse notes.md --convert offer.docx --reference-doc letterhead.docx
+docparse --generate report.docx --prompt "Q1 sales report"   # CLI-only
+```
+
+Three things that bite:
+
+1. **Batch, never loop.** `docparse *.docx` compiles once;
+   `for f in *.docx; do docparse "$f"; done` recompiles per file and is ~10x slower.
+2. **Pass `--output-dir`.** The default output lands in `docparse/data` inside
+   the clone, which reads as "the output went missing".
+3. **Try local PDF backends before `ai`.** `pdftotext` → `docling` → `liteparse`
+   → `ai`. Only a scanned/image-only PDF genuinely needs `ai`, and that decision
+   sends the document to an AI provider — put it to the user first.
+
+Install, the full flag list, environment variables, and the failure-mode table
+are in [resources/local-cli.md](resources/local-cli.md).
 
 ## MCP Tools (Preferred)
 
@@ -115,7 +187,7 @@ bash scripts/convert.sh report.md docx
 - User has DOCX, PDF, PPTX, XLSX, CSV, HTML, Markdown, EPUB, ODT, ODP, ODS, EML, TEX, RTF files
 - User wants structured data from Office documents (tables, headings, track changes, comments)
 - User wants to extract text from PDFs or images
-- User has audio/video to parse — **self-host only**: the hosted API rejects it; use the AILANG CLI with your own AI key
+- User has audio/video to parse — **local CLI only**: the hosted API rejects it (see [resources/local-cli.md](resources/local-cli.md))
 
 **Generating:**
 - User asks to create, write, author, build, or make a document, deck, or spreadsheet
@@ -294,6 +366,7 @@ maintainers — no need to leave the session to open a GitHub issue.
 
 ## Resources
 
+- [Local CLI reference](resources/local-cli.md) — install, flags, and what leaves the machine
 - [API Reference](resources/api-reference.md) — full endpoint documentation
 - [Integration Guide](resources/integration-guide.md) — Python, TypeScript, curl examples
 - [Docs](https://www.sunholo.com/ailang-parse/) · [MCP guide](https://www.sunholo.com/ailang-parse/mcp.html) · [Pricing](https://www.sunholo.com/ailang-parse/pricing.html)
