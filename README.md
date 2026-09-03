@@ -27,9 +27,23 @@ hardware:
 curl -fsSL https://ailang.sunholo.com/install.sh | bash        # AILANG runtime
 git clone https://github.com/sunholo-data/ailang-parse.git
 ln -s "$PWD/ailang-parse/bin/docparse" /usr/local/bin/docparse
+docparse --check                                               # verify
 
 docparse report.docx --output-dir ./parsed
 ```
+
+That is everything for Office, ODF, HTML, Markdown, CSV, TeX, EPUB and email.
+PDF needs two more steps that are easy to miss:
+
+```bash
+brew install poppler                                  # pdftotext, the default backend
+cd ailang-parse && uv pip install docling liteparse   # local OCR / layout backends
+```
+
+`docling` and `liteparse` are Python packages in the clone's own uv environment
+and are not in the default dependency group, so installing `uv` alone will not
+do. Without `docling`, a **scanned** PDF fails even on the default backend —
+`pdftotext` escalates to it automatically when it finds no text layer.
 
 The two coexist. Once the plugin is installed, the skill carries the decision
 rule and tells you which path a given parse is using, so you are never

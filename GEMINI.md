@@ -24,6 +24,13 @@ at 30s), and `--generate` (prompt-to-document, not on the hosted API).
 curl -fsSL https://ailang.sunholo.com/install.sh | bash
 git clone https://github.com/sunholo-data/ailang-parse.git
 ln -s "$PWD/ailang-parse/bin/docparse" /usr/local/bin/docparse
+docparse --check
+
+# PDF only — docling/liteparse live in the clone's uv env, not the default
+# dependency group, and a scanned PDF needs docling even on the default backend
+brew install poppler                                  # apt: poppler-utils
+cd ailang-parse && uv pip install docling liteparse
+# AI backends: gcloud auth application-default login (ADC, not an API key)
 
 docparse report.docx --output-dir ./parsed
 ```

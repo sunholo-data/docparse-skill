@@ -14,10 +14,22 @@ needs `docling`/`liteparse` (hosted is capped at 30s), or for `--generate`
 (prompt-to-document, which the hosted API does not have).
 
 ```bash
-command -v docparse || echo "not installed"
+command -v docparse && command -v ailang       # both are required
+curl -fsSL https://ailang.sunholo.com/install.sh | bash      # AILANG runtime
+git clone https://github.com/sunholo-data/ailang-parse.git
+ln -s "$PWD/ailang-parse/bin/docparse" /usr/local/bin/docparse
+
+brew install poppler                                  # PDF: default backend
+cd ailang-parse && uv pip install docling liteparse   # PDF: local OCR/layout
+
 docparse report.docx --output-dir ./parsed     # -> parsed/report.json + .md
 docparse notes.md --convert slides.pptx        # writes a real file, not base64 JSON
 ```
+
+`docling`/`liteparse` are Python packages in the clone's uv environment and are
+not in the default dependency group; `uv` alone is not enough. A scanned PDF
+needs `docling` even on the default backend, because `pdftotext` escalates to it
+automatically when it finds no text layer.
 
 Install and the full reference:
 `plugins/ailang-parse/skills/ailang-parse/resources/local-cli.md`.

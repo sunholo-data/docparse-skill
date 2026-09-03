@@ -19,9 +19,18 @@ the `docling`/`liteparse` backends (the hosted API's 30s cap kills them); or for
 sensitivity, ask — do not upload by default.
 
 ```bash
+# Install: the wrapper needs the AILANG runtime on PATH
 curl -fsSL https://ailang.sunholo.com/install.sh | bash
 git clone https://github.com/sunholo-data/ailang-parse.git
 ln -s "$PWD/ailang-parse/bin/docparse" /usr/local/bin/docparse
+docparse --check
+
+# PDF only: pdftotext is the default backend; docling/liteparse are Python
+# packages in the clone's uv env, NOT in the default dependency group.
+# Without docling, a scanned PDF fails even on the default backend.
+brew install poppler                                  # apt: poppler-utils
+cd ailang-parse && uv pip install docling liteparse
+# AI backends authenticate via ADC: gcloud auth application-default login
 
 docparse report.docx --output-dir ./parsed
 docparse ~/inbox/ --output-dir ./parsed        # batch: compiles once, ~10x faster than a loop

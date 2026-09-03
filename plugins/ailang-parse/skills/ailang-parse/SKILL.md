@@ -56,9 +56,39 @@ scanned PDF off the wire.
 
 ## Local CLI Quick Reference
 
-```bash
-command -v docparse || echo "not installed — see resources/local-cli.md"
+**Install** (two binaries: the wrapper needs the AILANG runtime on `PATH`):
 
+```bash
+command -v docparse && command -v ailang    # already installed?
+
+curl -fsSL https://ailang.sunholo.com/install.sh | bash      # 1. AILANG runtime
+git clone https://github.com/sunholo-data/ailang-parse.git   # 2. the parsers
+ln -s "$PWD/ailang-parse/bin/docparse" /usr/local/bin/docparse
+docparse --check                                             # 3. verify
+```
+
+That covers every deterministic format. PDF needs more, and this is the step
+people skip:
+
+```bash
+brew install poppler          # pdftotext — the default PDF backend
+                              # (apt install poppler-utils on Debian/Ubuntu)
+
+cd ailang-parse && uv pip install docling liteparse   # local OCR / layout
+```
+
+`docling` and `liteparse` are Python packages inside the **clone's own uv
+environment**, not system tools, and they are not in the default dependency
+group — installing `uv` alone is not enough. This matters even if you never
+pass `--pdf-backend`: when `pdftotext` finds no text layer the CLI escalates to
+`docling` automatically, and without it a scanned PDF fails with
+`no text layer … and OCR found nothing`, which reads like a corrupt file rather
+than a missing dependency. AI backends authenticate via
+`gcloud auth application-default login` (ADC), not an API key.
+
+**Use**
+
+```bash
 docparse report.docx                       # -> <out>/report.json + .md
 docparse ~/case-files/ --output-dir /tmp/parsed   # batch a folder; compiles ONCE
 docparse contract.pdf                      # deterministic pdftotext, no AI, no network

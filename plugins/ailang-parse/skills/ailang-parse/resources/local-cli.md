@@ -33,13 +33,69 @@ docparse --check          # type-check every module
 docparse --test           # run inline tests
 ```
 
-Optional extras, only needed for specific inputs:
+That is the whole install for every deterministic format — Office, ODF, HTML,
+Markdown, CSV, TeX, EPUB, EML/MBOX all work at this point with no further deps.
 
-| Extra | Needed for | Install |
-|---|---|---|
-| `pdftotext` (poppler) | PDF, default backend | `brew install poppler` / `apt install poppler-utils` |
-| `uv` | `--pdf-backend docling` and `liteparse` | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
-| Google ADC | any AI backend | `gcloud auth application-default login` |
+## 2b. PDF backends — the part that is easy to miss
+
+PDF is the one format with dependencies outside the clone, and a fresh install
+will fail on it in two different ways if you skip this.
+
+### `pdftotext` (default backend)
+
+```bash
+brew install poppler          # macOS
+sudo apt install poppler-utils  # Debian/Ubuntu
+command -v pdftotext          # verify
+```
+
+### `docling` and `liteparse` (local OCR / layout)
+
+These are **Python packages living in the clone's own uv environment**, not
+system tools. `docparse` shells out to
+`uv run --project <clone> python docparse/services/pdf_backends/adapter.py`, so
+`uv` alone is not enough — the packages have to be synced into that project
+first, and they are **not** in the default dependency group:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh    # uv itself
+
+cd /path/to/ailang-parse
+
+# Lean: just the two backends (recommended)
+uv pip install docling liteparse
+
+# Or the full comparison stack, if you also want the benchmark competitors
+uv sync --extra competitors
+
+# Verify — both must import from the clone's .venv
+.venv/bin/python -c "import docling, liteparse; print('backends ok')"
+```
+
+**This also affects the default path.** When `pdftotext` finds no text layer,
+`docparse` automatically escalates to `docling` — both are free, so it does not
+ask. If `docling` was never installed, a scanned PDF fails with
+`no text layer (pdftotext: …) and OCR found nothing (docling: …)`, which reads
+like a bad PDF rather than a missing dependency. `--pdf-backend ai` costs money
+and is therefore **never** automatic; the caller must ask for it.
+
+### AI backends
+
+```bash
+gcloud auth application-default login
+```
+
+AI parsing runs through Google ADC (Vertex AI) — the wrapper deliberately
+blanks `GOOGLE_API_KEY` on that path, so exporting an API key does nothing.
+
+### Summary
+
+| Input | Extra needed |
+|---|---|
+| Office, ODF, HTML, Markdown, CSV, TeX, EPUB, EML, MBOX | none |
+| PDF with a text layer | `pdftotext` (poppler) |
+| Scanned PDF, or `--pdf-backend docling` / `liteparse` | poppler + `uv` + `uv pip install docling liteparse` in the clone |
+| `--pdf-backend ai`, images, audio, video, `--describe`, `--summarize`, `--generate` | Google ADC |
 
 ## 3. What actually leaves the machine
 
@@ -123,9 +179,14 @@ docparse scan.pdf     --pdf-backend ai             # multimodal AI
 | `liteparse` | yes | heading structure from font sizes | free |
 | `ai` | **no** | scanned / image-only pages | AI tokens |
 
-Try the local backends in that order before reaching for `ai`. A scanned PDF is
-the one case they genuinely cannot handle — `pdftotext` returns empty or
-near-empty text, which is the signal.
+Escalation is partly automatic: on the default backend, if `pdftotext` finds no
+text layer, `docparse` falls back to `docling` on its own — both are free, so no
+permission is needed. `ai` costs money and is never automatic. An explicit
+`--pdf-backend` is treated as a decision and disables the fallback.
+
+`liteparse` is **not** an OCR fallback: it infers headings from font sizes in an
+existing text layer, so it fails on a scan exactly as `pdftotext` does. A
+genuinely scanned page needs `docling` (local) or `ai` (not local).
 
 The local backends are slow by design and the wrapper allows **20 minutes**
 (`DOCPARSE_PROCESS_TIMEOUT`, any Go duration: `90s`, `5m`, `1h`). This is the
@@ -189,16 +250,16 @@ no equivalent. Requires an AI backend, so the prompt goes to the provider.
 | `DOCPARSE_PROCESS_TIMEOUT` | subprocess ceiling for PDF backends (default `20m`) |
 | `AILANG_NO_TRACE` | wrapper sets `1`; set `0` to re-enable tracing when debugging |
 
-AI parsing runs through **Google ADC (Vertex AI)** — the wrapper deliberately
-blanks `GOOGLE_API_KEY` on that path. If AI backends fail to authenticate, the
-fix is `gcloud auth application-default login`, not exporting an API key.
+AI parsing authenticates via Google ADC, not an API key — see §2b.
 
 ## 9. Failure modes worth recognising
 
 | Symptom | Cause | Fix |
 |---|---|---|
 | `could not execute 'uv'` on a PDF | usually a **timeout kill**, not a missing binary | raise `DOCPARSE_PROCESS_TIMEOUT`; confirm `uv` exists before believing the message |
-| Empty / near-empty text from a PDF | scanned or image-only pages | `--pdf-backend ai`, after asking the user |
+| `no text layer … and OCR found nothing (docling: …)` | scanned PDF **and** `docling` not installed | `uv pip install docling liteparse` in the clone (§2b) — this is a missing dep, not a bad PDF |
+| Empty / near-empty text from a PDF | scanned or image-only pages | `docling` first (free, local); `--pdf-backend ai` only after asking the user |
+| `pdftotext: command not found` | poppler missing | `brew install poppler` / `apt install poppler-utils` |
 | `ailang: command not found` | wrapper works, runtime missing | install the AILANG CLI (§2) |
 | Batch feels 10x too slow | a shell loop, not batch mode | pass all files or the folder in one invocation |
 | Output "went missing" | landed in `docparse/data` inside the clone | pass `--output-dir` |
