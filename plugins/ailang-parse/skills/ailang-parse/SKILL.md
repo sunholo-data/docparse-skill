@@ -17,7 +17,7 @@ the difference is where the document goes.
 | | Local CLI (`docparse`) | Hosted API / MCP tools |
 |---|---|---|
 | Where the document goes | stays on the machine | **uploaded to the cloud service** |
-| Setup | clone + AILANG runtime | none — the plugin's MCP server |
+| Setup | git clone + AILANG runtime (no binary/brew/image exists) | none — the plugin's MCP server |
 | API key / quota | none | `dp_` key, counts against tier |
 | File size | unlimited | 32MB (Business tier can pre-upload to GCS) |
 | Audio / video | supported | **rejected** — self-host only |
@@ -40,7 +40,7 @@ Use the **local CLI** when any of these is true:
 
 Use the **hosted API / MCP tools** when:
 
-- `docparse` is not installed and the content is not sensitive.
+- `docparse` is not installed, or the user cannot clone a repo, and the content is not sensitive.
 - You want zero setup, or need `mcpEstimate` / `mcpAccount` / quota data.
 - The caller is a remote agent with no shell.
 
@@ -56,16 +56,28 @@ scanned PDF off the wire.
 
 ## Local CLI Quick Reference
 
-**Install** (two binaries: the wrapper needs the AILANG runtime on `PATH`):
+**Install.** There is no `brew install`, no released binary and no published
+image — `docparse` is a Bash wrapper that runs AILANG source resolved relative
+to its own path, so **the clone is the install**. Put it somewhere permanent.
 
 ```bash
 command -v docparse && command -v ailang    # already installed?
 
 curl -fsSL https://ailang.sunholo.com/install.sh | bash      # 1. AILANG runtime
-git clone https://github.com/sunholo-data/ailang-parse.git   # 2. the parsers
-ln -s "$PWD/ailang-parse/bin/docparse" /usr/local/bin/docparse
+git clone https://github.com/sunholo-data/ailang-parse.git \
+  ~/.local/share/ailang-parse                                # 2. the parsers
+ln -s ~/.local/share/ailang-parse/bin/docparse ~/.local/bin/docparse
 docparse --check                                             # 3. verify
 ```
+
+Do **not** offer these as clone-free shortcuts — none of them yield a working
+CLI: `ailang install sunholo/ailang_parse` fetches the parser source but ships
+no wrapper and no PDF adapter and needs its own `ailang.toml` + `ailang lock`;
+the repo's Dockerfile has no published image (and pins `--caps IO,FS,Env`, so no
+PDF subprocesses or AI); and the pip/npm/Go SDKs are hosted-API clients that
+contain no parsers. If a user won't clone, say the local CLI isn't available to
+them rather than improvising — then the confidentiality call above is a real
+decision, not a formality.
 
 That covers every deterministic format. PDF needs more, and this is the step
 people skip:

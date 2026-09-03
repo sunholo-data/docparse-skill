@@ -21,9 +21,12 @@ audio/video, PDFs needing the `docling`/`liteparse` backends (hosted is capped
 at 30s), and `--generate` (prompt-to-document, not on the hosted API).
 
 ```bash
+# Source install only: no binary, no brew formula, no published image.
+# The wrapper runs AILANG source relative to its own path — the clone IS the
+# install, so put it somewhere permanent.
 curl -fsSL https://ailang.sunholo.com/install.sh | bash
-git clone https://github.com/sunholo-data/ailang-parse.git
-ln -s "$PWD/ailang-parse/bin/docparse" /usr/local/bin/docparse
+git clone https://github.com/sunholo-data/ailang-parse.git ~/.local/share/ailang-parse
+ln -s ~/.local/share/ailang-parse/bin/docparse ~/.local/bin/docparse
 docparse --check
 
 # PDF only — docling/liteparse live in the clone's uv env, not the default

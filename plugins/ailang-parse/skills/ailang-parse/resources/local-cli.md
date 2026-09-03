@@ -17,21 +17,45 @@ command -v ailang   && ailang --version
 `docparse` is a Bash wrapper around `ailang run`, so **both** must be on `PATH`.
 If `docparse` resolves but `ailang` does not, every invocation fails.
 
-## 2. Install
+## 2. Install — it is a source install, and there is no way around that
+
+**There is no `brew install docparse`, no released binary, and no published
+container image.** `docparse` is a ~800-line Bash wrapper around `ailang run`
+that resolves `docparse/main.ail` relative to its own real path, so the source
+tree has to be on disk. The clone *is* the install; treat it as a permanent
+location, not a temp dir.
 
 ```bash
-# 1. AILANG runtime (required)
+# 1. AILANG runtime (required — the wrapper is useless without it)
 curl -fsSL https://ailang.sunholo.com/install.sh | bash
 ailang --version
 
 # 2. The parsers (public repo — this is the same code the hosted API runs)
-git clone https://github.com/sunholo-data/ailang-parse.git
-ln -s "$PWD/ailang-parse/bin/docparse" /usr/local/bin/docparse   # or ~/.local/bin
+git clone https://github.com/sunholo-data/ailang-parse.git ~/.local/share/ailang-parse
+ln -s ~/.local/share/ailang-parse/bin/docparse ~/.local/bin/docparse   # or /usr/local/bin
 
 # 3. Verify
 docparse --check          # type-check every module
 docparse --test           # run inline tests
 ```
+
+Updating is `git -C ~/.local/share/ailang-parse pull`.
+
+### "Can I skip the clone?"
+
+Three things look like they should let you, and none of them give you the CLI.
+Do not send a user down these:
+
+| Route | What it actually gives you |
+|---|---|
+| `ailang install sunholo/ailang_parse` | Fetches the parser source into `~/.ailang/cache/registry/sunholo/ailang_parse/<version>/`. But the tarball ships **no `bin/docparse` wrapper** and **no `docparse/services/pdf_backends/adapter.py`**, and running `main.ail` straight from the cache fails on `package "sunholo/external_backend" not found in ailang.lock`. It needs your own `ailang.toml` + `ailang lock` + entry module. This is the path for **importing the parsers into an AILANG project**, not for getting a CLI. |
+| Docker | The repo's `Dockerfile` is CLI-shaped (`docker run -v $(pwd):/data docparse /data/file.docx`), but **no image is published** to any registry, so you clone in order to `docker build` anyway. Its `ENTRYPOINT` also pins `--caps IO,FS,Env` — no `Process`, no `AI` — so PDF backends and every AI path are unavailable inside it. |
+| `pip install ailang-parse` / `npm i @ailang/parse` / the Go SDK | **Hosted-API clients.** They contain no parsers at all — they POST to a server. Installing one does not give you local parsing; it gives you a nicer way to upload. |
+
+So if a user cannot or will not clone a repo, the local CLI is not available to
+them, and the honest answer is to say so rather than improvise. The hosted API
+is then the only option — which makes the confidentiality question (§3) a real
+decision, not a formality.
 
 That is the whole install for every deterministic format — Office, ODF, HTML,
 Markdown, CSV, TeX, EPUB, EML/MBOX all work at this point with no further deps.

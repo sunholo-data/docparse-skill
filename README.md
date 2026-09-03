@@ -23,14 +23,26 @@ and generators from the public
 [ailang-parse](https://github.com/sunholo-data/ailang-parse) repo, on your own
 hardware:
 
+It is a **source install** — there is no released binary, Homebrew formula or
+published container image. `docparse` is a Bash wrapper that runs AILANG source
+resolved relative to its own path, so the clone is the install; put it
+somewhere permanent and `git pull` to update.
+
 ```bash
 curl -fsSL https://ailang.sunholo.com/install.sh | bash        # AILANG runtime
-git clone https://github.com/sunholo-data/ailang-parse.git
-ln -s "$PWD/ailang-parse/bin/docparse" /usr/local/bin/docparse
+git clone https://github.com/sunholo-data/ailang-parse.git \
+  ~/.local/share/ailang-parse
+ln -s ~/.local/share/ailang-parse/bin/docparse ~/.local/bin/docparse
 docparse --check                                               # verify
 
 docparse report.docx --output-dir ./parsed
 ```
+
+Three routes look like clone-free shortcuts and are not:
+`ailang install sunholo/ailang_parse` fetches the parser source but ships no
+wrapper and no PDF adapter, and needs its own `ailang.toml` + `ailang lock`;
+the repo's Dockerfile has no published image; and the pip/npm/Go SDKs are
+hosted-API clients containing no parsers.
 
 That is everything for Office, ODF, HTML, Markdown, CSV, TeX, EPUB and email.
 PDF needs two more steps that are easy to miss:
