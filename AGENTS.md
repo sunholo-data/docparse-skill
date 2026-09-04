@@ -2,6 +2,11 @@
 
 This repository is a plugin for AI coding assistants that provides universal document parsing via the AILANG Parse API.
 
+> **pi users:** pi does not load MCP servers. The `pi-extension/` directory in
+> this repo is the pi-native equivalent — native tools wrapping the local CLI
+> and the hosted REST API, with shared device-flow auth. See
+> `pi-extension/README.md`.
+
 ## What This Plugin Does
 
 When installed, it registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/` with 10 tools for document parsing, editing, generation, format conversion, cost estimation, authentication, file upload, and account management.

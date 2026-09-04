@@ -1,0 +1,9 @@
+{
+  "name": "docparse-pi-extension",
+  "version": "0.1.0",
+  "description": "pi extension: parse/convert documents with the docparse CLI or the hosted docparse API (MCP/online)",
+  "type": "module",
+  "pi": {
+    "extensions": ["./index.ts"]
+  }
+}

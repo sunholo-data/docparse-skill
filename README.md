@@ -152,6 +152,18 @@ Per-document pricing (not per-page). A 1-page or 1,000-page document costs the s
 | Pro | EUR 29 | 100,000 | 500 |
 | Business | EUR 99 | 500,000 | 2,000 |
 
+## pi (pi-coding-agent)
+
+pi does not load MCP servers, so pi users install the sibling extension
+instead: [`pi-extension/`](pi-extension/) registers native pi tools
+(`docparse_parse`, `docparse_convert`, `docparse_status`) plus a
+`/docparse-login` device-flow command, calling the local CLI and the same
+hosted API. Install:
+
+```bash
+ln -s ~/dev/sunholo/docparse-skill/pi-extension ~/.pi/agent/extensions/docparse
+```
+
 ## Links
 
 - [Documentation](https://www.sunholo.com/ailang-parse/)
