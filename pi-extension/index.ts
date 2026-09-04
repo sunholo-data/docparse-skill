@@ -24,7 +24,7 @@ import { StringEnum } from "@earendil-works/pi-ai";
 import { readFile, writeFile, mkdir, chmod } from "node:fs/promises";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir, homedir } from "node:os";
-import { basename, join } from "node:path";
+import { basename, dirname, extname, join } from "node:path";
 
 // ---------------------------------------------------------------------------
 // Config
@@ -215,6 +215,84 @@ async function apiParse(
   }
 }
 
+interface ApiConvertOutcome {
+  targetPath: string;
+  bytes: number;
+  sourceFormat: string;
+  contentType: string;
+}
+
+const CONVERT_TARGETS = new Set(["html", "docx", "pptx", "xlsx", "odt", "odp", "ods", "md", "qmd"]);
+
+async function apiConvert(
+  ctx: ExtensionContext,
+  cred: Credentials,
+  input: { localPath?: string; url?: string },
+  targetPath: string,
+): Promise<ApiConvertOutcome> {
+  const ext = extname(targetPath).replace(/^\./, "").toLowerCase();
+  const normalized = ext === "markdown" ? "md" : ext === "htm" ? "html" : ext;
+  if (!CONVERT_TARGETS.has(normalized)) {
+    throw new Error(
+      `target path '${targetPath}' needs one of: html docx pptx xlsx odt odp ods md qmd (got '${ext || "no extension"}')`,
+    );
+  }
+
+  const form = new FormData();
+  if (input.localPath) {
+    const bytes = await readFile(input.localPath);
+    form.append("filepath", new Blob([new Uint8Array(bytes)]), basename(input.localPath));
+  } else if (input.url) {
+    form.append("sourceUrl", input.url);
+  } else {
+    throw new Error("apiConvert needs localPath or url");
+  }
+  form.append("target", normalized);
+  form.append("apiKey", cred.apiKey);
+
+  // Response is JSON, not a binary body — and wrapped in the serve-api
+  // envelope: {"result": "<JSON-string>"}. Unwrap it, then read
+  // {content, encoding: "base64"|"utf8", content_type, target, source_format}.
+  // (Same gotcha as the MCP path: sunholo-data/docparse-skill 3f93bd7.)
+  const res = await apiFetch(ctx, cred, "/api/v1/convert", { method: "POST", body: form });
+  const text = await res.text();
+  let outer: Record<string, unknown>;
+  try {
+    outer = JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    throw new Error(`docparse API convert: HTTP ${res.status}: ${text.slice(0, 300)}`);
+  }
+  let j: Record<string, unknown> = outer;
+  if (typeof outer.result === "string") {
+    try {
+      j = JSON.parse(outer.result) as Record<string, unknown>;
+    } catch {
+      /* keep outer */
+    }
+  } else if (outer.result && typeof outer.result === "object") {
+    j = outer.result as Record<string, unknown>;
+  }
+  if (!res.ok || typeof j.error === "string" || typeof outer.error === "string") {
+    const err = (j.error ?? outer.error) as string | undefined;
+    const msg = (j.message ?? outer.message) as string | undefined;
+    throw new Error(`docparse API convert: ${err ?? res.status}: ${msg ?? text.slice(0, 300)}`);
+  }
+  const content = j.content as string | undefined;
+  if (!content) throw new Error(`docparse API convert: no content in response: ${text.slice(0, 300)}`);
+  const encoding = (j.encoding as string) ?? "utf8";
+  const contentType = (j.content_type as string) ?? "application/octet-stream";
+  const data: string | Buffer = encoding === "base64" ? Buffer.from(content, "base64") : content;
+
+  await mkdir(dirname(targetPath), { recursive: true });
+  await writeFile(targetPath, data);
+  return {
+    targetPath,
+    bytes: encoding === "base64" ? (data as Buffer).length : Buffer.byteLength(content, "utf8"),
+    sourceFormat: (j.source_format as string) ?? "",
+    contentType,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Tool result assembly
 // ---------------------------------------------------------------------------
@@ -343,7 +421,7 @@ export default function (pi: ExtensionAPI) {
       }
 
       // ----- CLI (auto or cli) -----
-      const outDir = params.output_dir ? resolveOutputDir(params.output_dir, ctx) : await mkdtemp(join(tmpdir(), "docparse-pi-"));
+      const outDir = params.output_dir ? resolveOutputPath(params.output_dir, ctx) : await mkdtemp(join(tmpdir(), "docparse-pi-"));
       onUpdate?.({
         content: [{ type: "text", text: `Running docparse CLI on ${resolved.length} path(s)…` }],
       });
@@ -373,38 +451,138 @@ export default function (pi: ExtensionAPI) {
     name: "docparse_convert",
     label: "docparse: Convert",
     description:
-      "Convert a document between formats using the local docparse CLI: " +
-      "targets html, docx, pptx, xlsx, odt, odp, ods, md, qmd. " +
-      "Optionally style a generated .docx after a reference document.",
-    promptSnippet: "Convert documents between html/docx/pptx/xlsx/odt/md/qmd via docparse",
+      "Create a document in another format: html, docx, pptx, xlsx, odt, odp, ods, md, qmd. " +
+      "Local input paths use the docparse CLI (offline, supports --reference-doc styling); " +
+      "an https:// URL or mode=api uses the hosted docparse API /api/v1/convert " +
+      "(same surface as the mcpConvert MCP tool; the API writes the file, no reference styling).",
+    promptSnippet: "Create documents in another format (html/docx/pptx/xlsx/odt/md/qmd) via docparse",
     promptGuidelines: [
-      "Use docparse_convert when the user asks to convert a document into another format (e.g. md to pptx, docx to html). Write the target path with the desired extension.",
+      "Use docparse_convert when the user asks to convert or produce a document in another format (e.g. md to pptx, docx to html, notes to Word). Write the target path with the desired extension — the extension picks the format.",
     ],
     parameters: Type.Object({
-      input: Type.String({ description: "Path of the document to convert" }),
-      target: Type.String({ description: "Output path; format comes from its extension (html docx pptx xlsx odt odp ods md qmd)" }),
+      input: Type.Optional(Type.String({ description: "Path of the document to convert (CLI transport)" })),
+      url: Type.Optional(
+        Type.String({ description: "Public https:// URL of the source document (hosted API transport, mutually exclusive with input)" }),
+      ),
+      mode: Type.Optional(
+        StringEnum(["auto", "cli", "api"] as const, {
+          description: "auto (default): local paths go to the CLI, URLs to the hosted API. Force with cli/api.",
+        }),
+      ),
+      target: Type.String({
+        description: "Output path; format comes from its extension (html docx pptx xlsx odt odp ods md qmd). Created if missing.",
+      }),
       reference_doc: Type.Optional(
-        Type.String({ description: "DOCX only: style the output after this reference document (styles, theme, fonts, page setup)" }),
+        Type.String({
+          description:
+            "CLI, DOCX output only: style the output after this reference document (styles, theme, embedded fonts, headers/footers, page setup)",
+        }),
+      ),
+      table_style: Type.Optional(
+        Type.String({ description: "CLI, with reference_doc: bind generated tables to this table style (styleId or name)" }),
+      ),
+    }),
+    async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+      if (signal?.aborted) return { content: [{ type: "text", text: "Cancelled" }] };
+      const mode = params.mode ?? "auto";
+      const target = params.target.startsWith("@") ? params.target.slice(1) : params.target;
+
+      // ----- hosted API ----- (file or URL; the API writes nothing — we do)
+      if (params.url || mode === "api") {
+        if (!params.input && !params.url) throw new Error("docparse_convert needs input (path) or url.");
+        if (mode === "cli" && params.url) throw new Error("mode=cli cannot convert a URL — use input or mode=api.");
+        const cred = await resolveCredentials(ctx);
+        if (!cred) {
+          throw new Error("No docparse API key. Run /docparse-login (device flow) or set DOCPARSE_API_KEY to a dp_... key.");
+        }
+        const targetPath = resolveOutputPath(params.target, ctx);
+        const outcome = await apiConvert(
+          ctx,
+          cred,
+          params.url ? { url: params.url } : { localPath: params.input!.startsWith("@") ? params.input!.slice(1) : params.input! },
+          targetPath,
+        );
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Created ${outcome.targetPath} (${outcome.bytes} bytes, ${outcome.contentType}) from ${params.url ?? params.input}${outcome.sourceFormat ? ` (source format: ${outcome.sourceFormat})` : ""} via hosted docparse API`,
+            },
+          ],
+          details: { transport: "api", ...outcome },
+        };
+      }
+
+      // ----- CLI -----
+      if (!params.input) throw new Error("docparse_convert needs input (local path) — or url for the hosted API.");
+      const cli = await resolveCliPath(pi);
+      if (!cli) throw new Error("docparse CLI not found on PATH. Install it or set DOCPARSE_BIN.");
+      const input = params.input.startsWith("@") ? params.input.slice(1) : params.input;
+      const args = [input, "--convert", params.target];
+      if (params.reference_doc) {
+        args.push("--reference-doc", params.reference_doc);
+        if (params.table_style) args.push("--table-style", params.table_style);
+      }
+      const result = await pi.exec(cli, args, { timeout: CLI_TIMEOUT_MS });
+      if (result.code !== 0) {
+        throw new Error(`docparse convert failed (exit ${result.code}):\n${result.stderr.slice(0, 2000)}`);
+      }
+      return {
+        content: [{ type: "text", text: `Converted ${input} → ${params.target}` }],
+        details: { input, target: params.target },
+      };
+    },
+  });
+
+  // ------------------------------------------------------------------
+  // Tool: docparse_generate — AI document creation from a prompt (CLI only)
+  // ------------------------------------------------------------------
+  pi.registerTool({
+    name: "docparse_generate",
+    label: "docparse: Generate",
+    description:
+      "AI-generate a new document from a text prompt and write it to a target path " +
+      "(docx, pptx, xlsx, odt, odp, ods, html, md, qmd — format from the extension). " +
+      "Uses the local docparse CLI with local AI keys. Optional --reference-doc styling " +
+      "for .docx. NOTE: the hosted API deliberately has no prompt-generation endpoint " +
+      "(its /api/v1/convert only transforms existing documents), so this tool is CLI-only.",
+    promptSnippet: "AI-generate a document from a prompt (docx/pptx/xlsx/odt/html/md/qmd) via docparse",
+    promptGuidelines: [
+      "Use docparse_generate when the user asks to CREATE a document from a description (e.g. 'write up these notes as a PowerPoint', 'make a Word doc with a revenue table'). Pass a target path whose extension picks the format; the prompt is the content brief.",
+    ],
+    parameters: Type.Object({
+      prompt: Type.String({ description: "Content brief for the document to generate" }),
+      target: Type.String({
+        description: "Output path; format comes from its extension (docx pptx xlsx odt odp ods html md qmd)",
+      }),
+      reference_doc: Type.Optional(
+        Type.String({
+          description:
+            "DOCX only: style the generated document after this reference document (styles, theme, embedded fonts, headers/footers, page setup)",
+        }),
+      ),
+      table_style: Type.Optional(
+        Type.String({ description: "DOCX only, with reference_doc: bind generated tables to this table style (styleId or name)" }),
       ),
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       if (signal?.aborted) return { content: [{ type: "text", text: "Cancelled" }] };
       const cli = await resolveCliPath(pi);
       if (!cli) throw new Error("docparse CLI not found on PATH. Install it or set DOCPARSE_BIN.");
-
-      const input = params.input.startsWith("@") ? params.input.slice(1) : params.input;
       const target = params.target.startsWith("@") ? params.target.slice(1) : params.target;
-      const args = [input, "--convert", target];
-      if (params.reference_doc) args.push("--reference-doc", params.reference_doc);
-
+      const args = ["--generate", target, "--prompt", params.prompt];
+      if (params.reference_doc) {
+        args.push("--reference-doc", params.reference_doc);
+        if (params.table_style) args.push("--table-style", params.table_style);
+      }
       const result = await pi.exec(cli, args, { timeout: CLI_TIMEOUT_MS });
       if (result.code !== 0) {
-        throw new Error(`docparse convert failed (exit ${result.code}):\n${result.stderr.slice(0, 2000)}`);
+        throw new Error(`docparse generate failed (exit ${result.code}):\n${result.stderr.slice(0, 2000)}`);
       }
       void ctx;
       return {
-        content: [{ type: "text", text: `Converted ${input} → ${target}` }],
-        details: { input, target, outputDir: undefined },
+        content: [{ type: "text", text: `Generated ${target} from the prompt via the docparse CLI` }],
+        details: { target, prompt: params.prompt },
       };
     },
   });
@@ -555,8 +733,8 @@ export default function (pi: ExtensionAPI) {
   });
 }
 
-function resolveOutputDir(dir: string, ctx: ExtensionContext): string {
-  if (dir.startsWith("~")) return join(homedir(), dir.slice(1));
-  if (dir.startsWith("/")) return dir;
-  return join(ctx.cwd, dir);
+function resolveOutputPath(p: string, ctx: ExtensionContext): string {
+  if (p.startsWith("~")) return join(homedir(), p.slice(1));
+  if (p.startsWith("/")) return p;
+  return join(ctx.cwd, p);
 }

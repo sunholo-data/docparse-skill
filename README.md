@@ -156,9 +156,9 @@ Per-document pricing (not per-page). A 1-page or 1,000-page document costs the s
 
 pi does not load MCP servers, so pi users install the sibling extension
 instead: [`pi-extension/`](pi-extension/) registers native pi tools
-(`docparse_parse`, `docparse_convert`, `docparse_status`) plus a
-`/docparse-login` device-flow command, calling the local CLI and the same
-hosted API. Install:
+(`docparse_parse`, `docparse_convert`, `docparse_generate`, `docparse_status`)
+plus a `/docparse-login` device-flow command, calling the local CLI and the
+same hosted API (parse, convert and the local-only prompt generation). Install:
 
 ```bash
 ln -s ~/dev/sunholo/docparse-skill/pi-extension ~/.pi/agent/extensions/docparse

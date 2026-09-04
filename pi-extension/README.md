@@ -72,7 +72,8 @@ only.
 | Tool | Description |
 |---|---|
 | `docparse_parse` | Parse local paths (CLI) or an https URL (hosted API) → markdown/JSON. Options: `pdf_backend` (`pdftotext`/`docling`/`liteparse`/`ai`), `summarize`, `describe`, `output_dir`, `mode` (`auto`/`cli`/`api`), `output` (`markdown`/`json`/`both`). |
-| `docparse_convert` | Convert between `html docx pptx xlsx odt odp ods md qmd` (CLI), optional `--reference-doc` styling for DOCX. |
+| `docparse_convert` | Create a document in another format (`html docx pptx xlsx odt odp ods md qmd`). Local input → CLI (offline, `--reference-doc` styling); https URL or `mode: "api"` → hosted `/api/v1/convert` (the `mcpConvert` surface; the extension writes the decoded file — base64 for ZIP formats). |
+| `docparse_generate` | **CLI-only** — AI-generate a document from a prompt into `docx/pptx/xlsx/odt/odp/ods/html/md/qmd`, optional `--reference-doc` styling. The hosted API deliberately has no prompt-generation endpoint (`/api/v1/convert` transforms existing docs only), so creation-from-prompt needs local AI keys. |
 | `docparse_status` | CLI presence + hosted API health + auth state. |
 
 ## Commands
@@ -86,4 +87,7 @@ only.
 - "Parse https://example.com/report.pdf" → hosted API `sourceUrl` parse.
 - "This PDF is a scan" → `docparse_parse` with `pdf_backend: "ai"`.
 - "Convert notes.md to slides" → `docparse_convert` → `notes.pptx`.
+- "Convert https://…/report.md to Word via the API" → `docparse_convert` with `url` → hosted `/api/v1/convert`.
+- "Turn these notes into a PowerPoint" (no source doc) → `docparse_generate` with a prompt → `slides.pptx`.
+- "Make a Word version styled like our letterhead" → `docparse_generate`/`docparse_convert` with `reference_doc`.
 - "Transcribe this lecture recording" → CLI parse of WAV/MP4 (hosted API doesn't do audio/video).
