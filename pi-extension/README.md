@@ -9,7 +9,7 @@ that call the same backend:
 | Transport | What | Auth | Best for |
 |---|---|---|---|
 | **CLI** | local `docparse` binary (AILANG Parse CLI) | local AI keys (env) | Local files, all formats (Office/ODF/EPUB/EML/TeX/images/**audio/video** — self-host-only on the hosted API), deterministic PDFs, scanned PDFs via `pdf_backend: "ai"`, convert/generate |
-| **Hosted API** | `https://docparse.ailang.sunholo.com` REST `/api/v1/*` | `dp_…` API key (device flow) | URL parsing (`url` param), no local AILANG install, tier-metered quota |
+| **Hosted API** | `https://docparse.ailang.sunholo.com` REST `/api/v1/*` | `dp_…` API key (device flow) | URL parsing (`url` param), no local install at all, tier-metered quota |
 
 Claude Code users get the full 10-tool MCP surface (`mcpParse`, `mcpConvert`,
 `editDocument`, `getUploadUrl`, `mcpFormats`, `mcpEstimate`, `mcpAuth`,
@@ -19,6 +19,16 @@ this extension; the device-flow auth is shared (same
 `~/.config/ailang-parse/credentials.json`).
 
 ## Install (global)
+
+The extension shells out to the local `docparse` binary, so install that first
+(ailang_parse **0.40.0+**; no clone needed):
+
+```bash
+curl -fsSL https://www.sunholo.com/ailang-parse/install.sh | sh
+docparse --install-backends   # optional: local OCR/layout PDF backends
+```
+
+Then link the extension:
 
 ```bash
 ln -s ~/dev/sunholo/docparse-skill/pi-extension ~/.pi/agent/extensions/docparse
@@ -50,10 +60,10 @@ Overrides: `DOCPARSE_API_KEY`, `DOCPARSE_API_BASE`, `DOCPARSE_BIN`.
 
 ## PDF backends (local, all installed)
 
-The CLI resolves backends through the **uv-managed env** of the ailang-parse
-checkout (the CLI wrapper exports `DOCPARSE_PROJECT_ROOT`, and the adapter
+The CLI resolves backends through the **uv-managed env** of the docparse
+install root (the CLI wrapper exports `DOCPARSE_PROJECT_ROOT`, and the adapter
 runs `uv run --project <root> python …/pdf_backends/adapter.py` — never the
-system python3):
+system python3). `docparse --install-backends` populates it:
 
 | `pdf_backend` | Engine | Notes |
 |---|---|---|

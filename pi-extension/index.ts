@@ -116,7 +116,9 @@ async function runCliParse(
   opts: { pdfBackend?: string; summarize?: boolean; describe?: boolean; outputDir: string },
 ): Promise<CliParseResult> {
   const cli = await resolveCliPath(pi);
-  if (!cli) throw new Error("docparse CLI not found on PATH. Install it or set DOCPARSE_BIN.");
+  if (!cli) throw new Error("docparse CLI not found on PATH. Install it with:\n"
+      + "  curl -fsSL https://www.sunholo.com/ailang-parse/install.sh | sh\n"
+      + "or point DOCPARSE_BIN at an existing binary.");
 
   const args = [...paths, "--output-dir", opts.outputDir];
   if (opts.pdfBackend) args.push("--pdf-backend", opts.pdfBackend);
@@ -516,7 +518,9 @@ export default function (pi: ExtensionAPI) {
       // ----- CLI -----
       if (!params.input) throw new Error("docparse_convert needs input (local path) — or url for the hosted API.");
       const cli = await resolveCliPath(pi);
-      if (!cli) throw new Error("docparse CLI not found on PATH. Install it or set DOCPARSE_BIN.");
+      if (!cli) throw new Error("docparse CLI not found on PATH. Install it with:\n"
+      + "  curl -fsSL https://www.sunholo.com/ailang-parse/install.sh | sh\n"
+      + "or point DOCPARSE_BIN at an existing binary.");
       const input = params.input.startsWith("@") ? params.input.slice(1) : params.input;
       const args = [input, "--convert", params.target];
       if (params.reference_doc) {
@@ -568,7 +572,9 @@ export default function (pi: ExtensionAPI) {
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       if (signal?.aborted) return { content: [{ type: "text", text: "Cancelled" }] };
       const cli = await resolveCliPath(pi);
-      if (!cli) throw new Error("docparse CLI not found on PATH. Install it or set DOCPARSE_BIN.");
+      if (!cli) throw new Error("docparse CLI not found on PATH. Install it with:\n"
+      + "  curl -fsSL https://www.sunholo.com/ailang-parse/install.sh | sh\n"
+      + "or point DOCPARSE_BIN at an existing binary.");
       const target = params.target.startsWith("@") ? params.target.slice(1) : params.target;
       const args = ["--generate", target, "--prompt", params.prompt];
       if (params.reference_doc) {

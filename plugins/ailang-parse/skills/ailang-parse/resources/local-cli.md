@@ -15,50 +15,50 @@ command -v ailang   && ailang --version
 ```
 
 `docparse` is a Bash wrapper around `ailang run`, so **both** must be on `PATH`.
-If `docparse` resolves but `ailang` does not, every invocation fails.
+If `docparse` resolves but `ailang` does not, every invocation fails — re-run
+the installer in §2, which installs the runtime as well.
 
-## 2. Install — it is a source install, and there is no way around that
+## 2. Install
 
-**There is no `brew install docparse`, no released binary, and no published
-container image.** `docparse` is a ~800-line Bash wrapper around `ailang run`
-that resolves `docparse/main.ail` relative to its own real path, so the source
-tree has to be on disk. The clone *is* the install; treat it as a permanent
-location, not a temp dir.
+One command, no clone (ailang_parse **0.40.0+**):
 
 ```bash
-# 1. AILANG runtime (required — the wrapper is useless without it)
-curl -fsSL https://ailang.sunholo.com/install.sh | bash
-ailang --version
-
-# 2. The parsers (public repo — this is the same code the hosted API runs)
-git clone https://github.com/sunholo-data/ailang-parse.git ~/.local/share/ailang-parse
-ln -s ~/.local/share/ailang-parse/bin/docparse ~/.local/bin/docparse   # or /usr/local/bin
-
-# 3. Verify
-docparse --check          # type-check every module
-docparse --test           # run inline tests
+curl -fsSL https://www.sunholo.com/ailang-parse/install.sh | sh
+docparse --help
 ```
 
-Updating is `git -C ~/.local/share/ailang-parse pull`.
+It installs the AILANG runtime if you do not have it, fetches the published
+package (~400 KB, not the 24 MB repo archive), verifies its sha256, unpacks to
+`~/.local/share/ailang-parse/<version>/`, resolves dependencies once, and links
+`~/.local/bin/docparse`. Then it reports which optional dependencies are missing
+(see §2b) without installing anything for you.
 
-### "Can I skip the clone?"
-
-Three things look like they should let you, and none of them give you the CLI.
-Do not send a user down these:
-
-| Route | What it actually gives you |
+| Flag | Effect |
 |---|---|
-| `ailang install sunholo/ailang_parse` | Fetches the parser source into `~/.ailang/cache/registry/sunholo/ailang_parse/<version>/`. But the tarball ships **no `bin/docparse` wrapper** and **no `docparse/services/pdf_backends/adapter.py`**, and running `main.ail` straight from the cache fails on `package "sunholo/external_backend" not found in ailang.lock`. It needs your own `ailang.toml` + `ailang lock` + entry module. This is the path for **importing the parsers into an AILANG project**, not for getting a CLI. |
-| Docker | The repo's `Dockerfile` is CLI-shaped (`docker run -v $(pwd):/data docparse /data/file.docx`), but **no image is published** to any registry, so you clone in order to `docker build` anyway. Its `ENTRYPOINT` also pins `--caps IO,FS,Env` — no `Process`, no `AI` — so PDF backends and every AI path are unavailable inside it. |
-| `pip install ailang-parse` / `npm i @ailang/parse` / the Go SDK | **Hosted-API clients.** They contain no parsers at all — they POST to a server. Installing one does not give you local parsing; it gives you a nicer way to upload. |
+| `--version X.Y.Z` | pin a version instead of latest |
+| `--prefix DIR` | install root (default `~/.local/share/ailang-parse`) |
+| `--bindir DIR` | where to link (default `~/.local/bin`) |
+| `--uninstall` | remove the prefix and the symlink |
 
-So if a user cannot or will not clone a repo, the local CLI is not available to
-them, and the honest answer is to say so rather than improvise. The hosted API
-is then the only option — which makes the confidentiality question (§3) a real
-decision, not a formality.
+Versions install side by side, so upgrading is a new directory and a moved
+symlink. Re-running is a no-op. If `~/.local/bin` is not on `PATH` the installer
+says so and prints the line to add.
 
-That is the whole install for every deterministic format — Office, ODF, HTML,
-Markdown, CSV, TeX, EPUB, EML/MBOX all work at this point with no further deps.
+**Before 0.40.0 there was no such route** — the published package shipped the
+`.ail` sources but not the wrapper or the PDF adapter, so a clone was the only
+option. If you are on an older version, upgrade rather than working around it.
+
+### Contributors: clone instead
+
+```bash
+git clone https://github.com/sunholo-data/ailang-parse.git
+ln -s "$PWD/ailang-parse/bin/docparse" /usr/local/bin/docparse
+```
+
+The wrapper finds its project root by walking up for `docparse/main.ail`, so it
+works from a clone, an installed prefix, or a symlink chain. Note that the
+wrapper and the PDF adapter live under `assets/` — the only path the AILANG
+publisher bundles verbatim — with symlinks at their historical locations.
 
 ## 2b. PDF backends — the part that is easy to miss
 
@@ -75,32 +75,29 @@ command -v pdftotext          # verify
 
 ### `docling` and `liteparse` (local OCR / layout)
 
-These are **Python packages living in the clone's own uv environment**, not
-system tools. `docparse` shells out to
-`uv run --project <clone> python docparse/services/pdf_backends/adapter.py`, so
-`uv` alone is not enough — the packages have to be synced into that project
-first, and they are **not** in the default dependency group:
+These are **Python packages inside the docparse installation's own uv
+environment**, not system tools. `docparse` shells out to
+`uv run --project <install root> python .../pdf_backends/adapter.py`, so `uv`
+alone is not enough — the packages have to be synced into that project first,
+and in a clone they are **not** in the default dependency group:
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh    # uv itself
-
-cd /path/to/ailang-parse
-
-# Lean: just the two backends (recommended)
-uv pip install docling liteparse
-
-# Or the full comparison stack, if you also want the benchmark competitors
-uv sync --extra competitors
-
-# Verify — both must import from the clone's .venv
-.venv/bin/python -c "import docling, liteparse; print('backends ok')"
+docparse --install-backends                        # then this
 ```
+
+`--install-backends` syncs them into whichever uv project the parser resolves at
+runtime. On an installed prefix that is a minimal project carrying docling and
+liteparse and nothing else; in a clone it is the repo's `pyproject.toml`, whose
+`competitors` extra also pulls `unstructured`, `llama-parse`, `markitdown` and
+`kreuzberg`. Either way the backends end up where the adapter looks for them.
 
 **This also affects the default path.** When `pdftotext` finds no text layer,
 `docparse` automatically escalates to `docling` — both are free, so it does not
 ask. If `docling` was never installed, a scanned PDF fails with
-`no text layer (pdftotext: …) and OCR found nothing (docling: …)`, which reads
-like a bad PDF rather than a missing dependency. `--pdf-backend ai` costs money
+`no text layer (pdftotext: …) and OCR found nothing (docling: …)`. Since
+0.40.0 that message names `docparse --install-backends`; on older versions it
+reads like a bad PDF rather than a missing dependency. `--pdf-backend ai` costs money
 and is therefore **never** automatic; the caller must ask for it.
 
 ### AI backends
@@ -118,7 +115,7 @@ blanks `GOOGLE_API_KEY` on that path, so exporting an API key does nothing.
 |---|---|
 | Office, ODF, HTML, Markdown, CSV, TeX, EPUB, EML, MBOX | none |
 | PDF with a text layer | `pdftotext` (poppler) |
-| Scanned PDF, or `--pdf-backend docling` / `liteparse` | poppler + `uv` + `uv pip install docling liteparse` in the clone |
+| Scanned PDF, or `--pdf-backend docling` / `liteparse` | poppler + `uv`, then `docparse --install-backends` |
 | `--pdf-backend ai`, images, audio, video, `--describe`, `--summarize`, `--generate` | Google ADC |
 
 ## 3. What actually leaves the machine
@@ -281,10 +278,11 @@ AI parsing authenticates via Google ADC, not an API key — see §2b.
 | Symptom | Cause | Fix |
 |---|---|---|
 | `could not execute 'uv'` on a PDF | usually a **timeout kill**, not a missing binary | raise `DOCPARSE_PROCESS_TIMEOUT`; confirm `uv` exists before believing the message |
-| `no text layer … and OCR found nothing (docling: …)` | scanned PDF **and** `docling` not installed | `uv pip install docling liteparse` in the clone (§2b) — this is a missing dep, not a bad PDF |
+| `no text layer … and OCR found nothing (docling: …)` | scanned PDF **and** `docling` not installed | `docparse --install-backends` (§2b) — this is a missing dep, not a bad PDF |
 | Empty / near-empty text from a PDF | scanned or image-only pages | `docling` first (free, local); `--pdf-backend ai` only after asking the user |
 | `pdftotext: command not found` | poppler missing | `brew install poppler` / `apt install poppler-utils` |
-| `ailang: command not found` | wrapper works, runtime missing | install the AILANG CLI (§2) |
+| `ailang: command not found` | wrapper works, runtime missing | re-run the installer (§2); it installs the runtime |
+| `cannot locate docparse/main.ail above …` | wrapper copied away from its sources | re-run the installer (§2) rather than moving files back |
 | Batch feels 10x too slow | a shell loop, not batch mode | pass all files or the folder in one invocation |
 | Output "went missing" | landed in `docparse/data` inside the clone | pass `--output-dir` |
 

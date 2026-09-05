@@ -17,7 +17,7 @@ the difference is where the document goes.
 | | Local CLI (`docparse`) | Hosted API / MCP tools |
 |---|---|---|
 | Where the document goes | stays on the machine | **uploaded to the cloud service** |
-| Setup | git clone + AILANG runtime (no binary/brew/image exists) | none — the plugin's MCP server |
+| Setup | one `curl \| sh` (0.40.0+) | none — the plugin's MCP server |
 | API key / quota | none | `dp_` key, counts against tier |
 | File size | unlimited | 32MB (Business tier can pre-upload to GCS) |
 | Audio / video | supported | **rejected** — self-host only |
@@ -40,7 +40,7 @@ Use the **local CLI** when any of these is true:
 
 Use the **hosted API / MCP tools** when:
 
-- `docparse` is not installed, or the user cannot clone a repo, and the content is not sensitive.
+- `docparse` is not installed and cannot be, and the content is not sensitive.
 - You want zero setup, or need `mcpEstimate` / `mcpAccount` / quota data.
 - The caller is a remote agent with no shell.
 
@@ -56,47 +56,37 @@ scanned PDF off the wire.
 
 ## Local CLI Quick Reference
 
-**Install.** There is no `brew install`, no released binary and no published
-image — `docparse` is a Bash wrapper that runs AILANG source resolved relative
-to its own path, so **the clone is the install**. Put it somewhere permanent.
+**Install** — one command, no clone (ailang_parse **0.40.0+**):
 
 ```bash
-command -v docparse && command -v ailang    # already installed?
+command -v docparse    # already installed?
 
-curl -fsSL https://ailang.sunholo.com/install.sh | bash      # 1. AILANG runtime
-git clone https://github.com/sunholo-data/ailang-parse.git \
-  ~/.local/share/ailang-parse                                # 2. the parsers
-ln -s ~/.local/share/ailang-parse/bin/docparse ~/.local/bin/docparse
-docparse --check                                             # 3. verify
+curl -fsSL https://www.sunholo.com/ailang-parse/install.sh | sh
 ```
 
-Do **not** offer these as clone-free shortcuts — none of them yield a working
-CLI: `ailang install sunholo/ailang_parse` fetches the parser source but ships
-no wrapper and no PDF adapter and needs its own `ailang.toml` + `ailang lock`;
-the repo's Dockerfile has no published image (and pins `--caps IO,FS,Env`, so no
-PDF subprocesses or AI); and the pip/npm/Go SDKs are hosted-API clients that
-contain no parsers. If a user won't clone, say the local CLI isn't available to
-them rather than improvising — then the confidentiality call above is a real
-decision, not a formality.
+It fetches the published package (~400 KB), installs the AILANG runtime if
+missing, and puts `docparse` on `PATH`. `--version`, `--prefix` and
+`--uninstall` are supported; re-running is a no-op.
 
-That covers every deterministic format. PDF needs more, and this is the step
-people skip:
+PDF needs two more steps, and this is the one people skip:
 
 ```bash
-brew install poppler          # pdftotext — the default PDF backend
+brew install poppler          # pdftotext, the default PDF backend
                               # (apt install poppler-utils on Debian/Ubuntu)
-
-cd ailang-parse && uv pip install docling liteparse   # local OCR / layout
+docparse --install-backends   # docling + liteparse, for scans and layout
 ```
 
-`docling` and `liteparse` are Python packages inside the **clone's own uv
-environment**, not system tools, and they are not in the default dependency
-group — installing `uv` alone is not enough. This matters even if you never
-pass `--pdf-backend`: when `pdftotext` finds no text layer the CLI escalates to
-`docling` automatically, and without it a scanned PDF fails with
-`no text layer … and OCR found nothing`, which reads like a corrupt file rather
-than a missing dependency. AI backends authenticate via
-`gcloud auth application-default login` (ADC), not an API key.
+`--install-backends` matters even if you never pass `--pdf-backend`: when
+`pdftotext` finds no text layer the parser escalates to `docling` on its own, so
+without it a **scanned** PDF fails on the default backend. AI backends
+authenticate via `gcloud auth application-default login` (ADC), not an API key.
+
+Still do **not** offer these as install routes — none yields a working CLI:
+`ailang install sunholo/ailang_parse` fetches the package but leaves you to
+wire up your own `ailang.toml` + `ailang lock` and entry module; the repo's
+Dockerfile has no published image (and pins `--caps IO,FS,Env`, so no PDF
+subprocesses or AI); and the pip/npm/Go SDKs are hosted-API clients containing
+no parsers. A `git clone` still works and is the contributors' path.
 
 **Use**
 

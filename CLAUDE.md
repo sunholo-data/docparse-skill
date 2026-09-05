@@ -14,28 +14,24 @@ needs `docling`/`liteparse` (hosted is capped at 30s), or for `--generate`
 (prompt-to-document, which the hosted API does not have).
 
 ```bash
-command -v docparse && command -v ailang       # both are required
-# Source install only — no binary, brew formula or published image exists.
-# The wrapper runs AILANG source relative to its own path: the clone IS the
-# install, so put it somewhere permanent.
-curl -fsSL https://ailang.sunholo.com/install.sh | bash      # AILANG runtime
-git clone https://github.com/sunholo-data/ailang-parse.git ~/.local/share/ailang-parse
-ln -s ~/.local/share/ailang-parse/bin/docparse ~/.local/bin/docparse
+command -v docparse                             # already installed?
+curl -fsSL https://www.sunholo.com/ailang-parse/install.sh | sh   # 0.40.0+
 
-brew install poppler                                  # PDF: default backend
-cd ailang-parse && uv pip install docling liteparse   # PDF: local OCR/layout
+brew install poppler                            # PDF: default backend
+docparse --install-backends                     # PDF: local OCR/layout
 
 docparse report.docx --output-dir ./parsed     # -> parsed/report.json + .md
 docparse notes.md --convert slides.pptx        # writes a real file, not base64 JSON
 ```
 
-`ailang install sunholo/ailang_parse`, Docker and the pip/npm/Go SDKs are not
-clone-free shortcuts — the first ships no wrapper or PDF adapter, the second has
-no published image, and the SDKs are hosted-API clients with no parsers in them.
-If a user won't clone, the local CLI is unavailable to them; say so.
+The installer needs ailang_parse **0.40.0+**; before that the published package
+shipped no wrapper, and a clone was the only route. `ailang install
+sunholo/ailang_parse`, Docker and the pip/npm/Go SDKs are still not install
+routes — the first leaves you to wire up your own entry module, the second has
+no published image, and the SDKs are hosted-API clients with no parsers.
 
-`docling`/`liteparse` are Python packages in the clone's uv environment and are
-not in the default dependency group; `uv` alone is not enough. A scanned PDF
+`docling`/`liteparse` are Python packages in the install's uv environment;
+`uv` alone is not enough, hence `--install-backends`. A scanned PDF
 needs `docling` even on the default backend, because `pdftotext` escalates to it
 automatically when it finds no text layer.
 
