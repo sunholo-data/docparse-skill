@@ -1,13 +1,37 @@
 ---
 name: ailang-parse
-description: Parse AND generate documents with the AILANG Parse API. Use when the user asks to parse, extract, read, or convert documents (DOCX, PDF, PPTX, XLSX, ODT, ODP, ODS, CSV, HTML, Markdown, EPUB, EML, TEX, RTF, images, audio, video) — and equally when they ask to CREATE, generate, write, author, build, or make a document, deck, spreadsheet, or report in any Office format. Triggers on "parse this file", "extract text from", "convert document", "turn these notes into a PowerPoint", "make me a Word doc", "write this up as a docx", "generate a spreadsheet", "build a report", "export this as Quarto", or any document format processing task. Covers BOTH the hosted API/MCP path and the local `docparse` CLI, which parses locally and uploads nothing — use the local path when documents are confidential, restricted, or must not leave the machine, when the user says "don't upload this" or "run it locally", for files over 32MB, for audio/video, or when a slow local PDF backend (docling, liteparse) is needed.
+description: >-
+  AILANG Parse (docparse) creates Word documents from Markdown and DOCX templates,
+  and parses, extracts, or converts Office files, PDFs, and other documents.
+  Use for docparse or AILANG Parse requests, Word reports, document conversion,
+  extracting tables or review markup, and exporting Markdown to slides,
+  spreadsheets, or Quarto. Covers the local CLI and optional hosted API/MCP.
+  Use specialised editing tools for precise Word redlines or live app editing.
 ---
 
 # AILANG Parse — Universal Document Parsing and Generation
 
 Two directions, one schema. **Parse** any document into structured blocks, and
-**generate** documents in 9 formats. Call `mcpFormats` for the live list of what
-is supported — it is the service's own answer and never goes stale.
+**generate** documents in 9 formats. `docparse` is the CLI name for AILANG Parse.
+
+## Tool availability and paths
+
+This skill works in Codex and Claude. A standalone skill installation provides
+instructions and scripts; it does **not** register an MCP server. Inspect the
+available tools before using MCP. With no MCP connection, use the installed
+`docparse` CLI; no hosted account is needed for deterministic local conversion.
+Call `mcpFormats` for live hosted capabilities only when using that connection.
+
+Resolve `scripts/` and `resources/` relative to this SKILL.md, not the user's
+working directory. For shell examples, set `DOCPARSE_SKILL_DIR` to the absolute
+folder containing this SKILL.md and use
+`bash "$DOCPARSE_SKILL_DIR/scripts/convert.sh" ...`. The bundled shell scripts
+call the **hosted API**, even when run on the user's laptop.
+
+For new local documents, prefer Markdown → `docparse --convert`; use a supplied
+DOCX as `--reference-doc`. Read [Document authoring and verification](resources/document-authoring.md)
+for template behaviour, output paths, visual QA, and specialised Word edits.
+Follow an explicitly requested tool or workflow when it differs.
 
 ## Choose the path first: local CLI or hosted API
 
@@ -16,8 +40,8 @@ the difference is where the document goes.
 
 | | Local CLI (`docparse`) | Hosted API / MCP tools |
 |---|---|---|
-| Where the document goes | stays on the machine | **uploaded to the cloud service** |
-| Setup | one `curl \| sh` (0.40.0+) | none — the plugin's MCP server |
+| Where the document goes | deterministic backends stay on the machine; AI backends may send content | **uploaded to the cloud service** |
+| Setup | one `curl \| sh` (0.40.0+) | connected MCP server or API scripts |
 | API key / quota | none | `dp_` key, counts against tier |
 | File size | unlimited | 32MB (Business tier can pre-upload to GCS) |
 | Audio / video | supported | **rejected** — self-host only |
@@ -118,7 +142,9 @@ are in [resources/local-cli.md](resources/local-cli.md).
 
 ## MCP Tools (the hosted path)
 
-This plugin registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/`. The following tools are available automatically:
+The Claude plugin bundles an MCP connection to `https://docparse.ailang.sunholo.com/mcp/`.
+A standalone skill link does not. When connected, discover the actual tool
+names and schemas; the service exposes these capabilities:
 
 | Tool | Purpose |
 |------|---------|
@@ -146,14 +172,20 @@ Write Markdown, then convert it to the target format. There is no separate
 "create a DOCX" tool and none is needed.
 
 ```bash
-# Write your content to a .md file, then:
-bash scripts/convert.sh report.md docx
-bash scripts/convert.sh notes.md pptx      # each H1/H2 becomes a slide
-bash scripts/convert.sh data.md xlsx
-bash scripts/convert.sh paper.md qmd       # Quarto
+mkdir -p ./output ./parsed
+docparse report.md --convert ./output/report.docx --output-dir ./parsed
+docparse report.md --convert ./output/branded.docx --output-dir ./parsed \
+  --reference-doc letterhead.docx
+docparse notes.md --convert ./output/slides.pptx --output-dir ./parsed
+docparse data.md --convert ./output/data.xlsx --output-dir ./parsed
+docparse paper.md --convert ./output/paper.qmd --output-dir ./parsed
 ```
 
-Or over MCP: `mcpConvert(input: "report.md", outputFormat: "docx", apiKey: ...)`.
+For the hosted path, use
+`bash "$DOCPARSE_SKILL_DIR/scripts/convert.sh" report.md docx ./output/report.docx`.
+For MCP, inspect the connected `mcpConvert` schema. A hosted server cannot read
+an arbitrary laptop path: use a supported upload/reference mechanism or the
+multipart-upload script, and decode the returned payload into the output file.
 
 **What survives Markdown → any output format:**
 
@@ -168,10 +200,11 @@ Or over MCP: `mcpConvert(input: "report.md", outputFormat: "docx", apiKey: ...)`
 | Tables | including column alignment and colspan |
 
 **What Markdown cannot express** — headers, footers, comments, tracked changes.
-These have no Markdown syntax. They survive only when you convert *from* a
-document that already contains them (e.g. DOCX → DOCX). Do not promise a user a
-generated document with a running header; tell them it needs a source document
-or a template.
+These have no Markdown syntax. Supported comments and tracked changes can be
+preserved when converting from a document that already contains them.
+`--reference-doc` supplies headers, footers, styles, fonts, and page setup for
+new DOCX content; template body text and template comments are discarded.
+See the authoring reference before choosing conversion for a fidelity-sensitive edit.
 
 **AI generation from a prompt** (`--generate report.docx --prompt "Q1 sales
 report"`) exists only in the local `docparse` CLI. It is **not** on the hosted
@@ -334,7 +367,7 @@ work. Anything unrecognised is a typed `UNSUPPORTED_TARGET_FORMAT` error.
 | `scripts/capabilities.sh` | `bash scripts/capabilities.sh` | Full service contract |
 | `scripts/device-auth.sh` | `bash scripts/device-auth.sh` | Get API key via device flow |
 
-## Workflow: Parse a Document
+## Workflow: Parse a Document via the Hosted API
 
 1. **Check health**: `bash scripts/health.sh`
 2. **Estimate cost**: `bash scripts/estimate.sh report.docx blocks`
@@ -343,13 +376,19 @@ work. Anything unrecognised is a typed `UNSUPPORTED_TARGET_FORMAT` error.
 
 ## Workflow: Generate a Document
 
-1. **Write the content as Markdown** — front matter for title/author, tables,
-   headings, lists, code fences all carry through
-2. **Convert**: `bash scripts/convert.sh draft.md docx`
-3. **Verify**: the script prints the output path, MIME type and byte size. For
-   anything structural (tables, merged cells), parse it back with
-   `bash scripts/parse.sh out.docx blocks` and check the structure survived —
-   "the file opens" is not the same as "the file is correct"
+1. Write Markdown in a writable task directory, with front matter, headings,
+   tables, and image paths as needed. Preserve the user's content and template.
+2. Create the output directory and convert locally with an explicit filename:
+   `docparse draft.md --convert ./output/report.docx --output-dir ./parsed`.
+   Add `--reference-doc template.docx` when a reference is supplied.
+   Use the hosted conversion script only when that path was selected.
+3. Parse the output back locally into a separate verification directory and
+   check headings, tables, images, and supported review markup as applicable.
+4. Render the latest document and inspect every page for layout defects. Fix,
+   regenerate, and recheck after layout changes. Structural parsing alone does
+   not verify appearance. Follow [Document authoring and verification](resources/document-authoring.md).
+5. Deliver the requested file and disclose any verification that could not be
+   completed. Keep QA images and intermediate files separate from deliverables.
 
 ## Workflow: Verify Integration
 
@@ -391,7 +430,7 @@ converting a 200-page one.
 
 ## Reporting Issues & Feedback
 
-Hit a bug, a missing format, or a docs gap? Use the `submit_feedback` MCP tool
+When the user authorizes sending a bug report or feature request, use the available `submit_feedback` MCP tool
 with `package="sunholo/ailang_parse"` so it routes straight to the AILANG Parse
 maintainers — no need to leave the session to open a GitHub issue.
 

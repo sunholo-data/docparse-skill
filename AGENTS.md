@@ -9,7 +9,13 @@ This repository is a plugin for AI coding assistants that provides universal doc
 
 ## What This Plugin Does
 
-When installed, it registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/` with 10 tools for document parsing, editing, generation, format conversion, cost estimation, authentication, file upload, and account management.
+When installed as a Claude plugin, it registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/` with 10 tools for document parsing, editing, generation, format conversion, cost estimation, authentication, file upload, and account management.
+
+A standalone Codex or Claude skill symlink does not register MCP. Use the
+available local CLI or an explicitly configured hosted connection. The shared
+entrypoint is `plugins/ailang-parse/skills/ailang-parse/SKILL.md`; keep agent
+instructions there and optional Codex UI metadata in its `agents/openai.yaml`.
+See README.md for the global symlink installation.
 
 ## Choose the path before the first call
 

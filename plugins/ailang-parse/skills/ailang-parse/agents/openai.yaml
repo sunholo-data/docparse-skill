@@ -1,0 +1,7 @@
+interface:
+  display_name: "AILANG Parse (docparse)"
+  short_description: "Create, parse, and convert documents with docparse"
+  default_prompt: "Use $ailang-parse to create or convert my document with docparse and verify the result."
+
+policy:
+  allow_implicit_invocation: true

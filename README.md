@@ -1,4 +1,4 @@
-# AILANG Parse — Claude Code Plugin
+# AILANG Parse — Shared Skill and Claude Code Plugin
 
 Parse any document into structured blocks — and generate documents in 9 formats — using the [AILANG Parse API](https://www.sunholo.com/ailang-parse/).
 
@@ -10,6 +10,54 @@ Inside Claude Code, add the marketplace and install the plugin:
 /plugin marketplace add sunholo-data/docparse-skill
 /plugin install ailang-parse@ailang-parse-marketplace
 ```
+
+## Global Codex skill and shared Claude installation
+
+Codex discovers user-wide skills in `~/.agents/skills` and follows symlinked
+skill folders. Keep this repo as the single source of truth instead of copying
+SKILL.md into each agent's configuration. From a clone of this repo:
+
+```bash
+git pull --ff-only
+DOCPARSE_SKILL_REPO="$(pwd -P)"
+mkdir -p ~/.agents/skills
+ln -s "$DOCPARSE_SKILL_REPO/plugins/ailang-parse/skills/ailang-parse" \
+  ~/.agents/skills/ailang-parse
+```
+
+Do not overwrite an existing skill directory or symlink: inspect its target
+first. For Claude, either keep the marketplace plugin installation above or
+link this same folder into `~/.claude/skills/ailang-parse`:
+
+```bash
+mkdir -p ~/.claude/skills
+ln -s "$DOCPARSE_SKILL_REPO/plugins/ailang-parse/skills/ailang-parse" \
+  ~/.claude/skills/ailang-parse
+```
+
+Avoid installing both the standalone Claude skill and the plugin's copy if that
+would create duplicate skill entries. Linked installations share edits
+immediately; a cached Claude marketplace plugin needs its own update. Subsequent
+`git pull --ff-only` updates the linked skill; commit or otherwise preserve local
+edits before syncing if they overlap upstream changes.
+
+In Codex, invoke `$ailang-parse` or ask naturally about docparse, Word document
+creation, or conversion. Automatic invocation remains enabled. Codex detects
+skill updates; if the skill is absent from the selector, restart Codex. This is
+a laptop-wide installation for local sessions using this home directory, not
+an installation on remote hosts or cloud environments.
+
+A skill symlink does **not** install an MCP server. The local CLI works without
+one. For optional hosted access, register the connection separately:
+
+```bash
+codex mcp add ailang-parse --url https://docparse.ailang.sunholo.com/mcp/
+```
+
+Use the service's device-auth tools if its API requests a key. Installing a
+skill does not copy Claude credentials or hooks into Codex. See
+[Codex skills](https://learn.chatgpt.com/docs/build-skills) and
+[MCP configuration](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
 
 ## Two ways to run it — pick one deliberately
 
