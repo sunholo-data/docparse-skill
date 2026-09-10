@@ -26,7 +26,7 @@ Resolve `scripts/` and `resources/` relative to this SKILL.md, not the user's
 working directory. For shell examples, set `DOCPARSE_SKILL_DIR` to the absolute
 folder containing this SKILL.md and use
 `bash "$DOCPARSE_SKILL_DIR/scripts/convert.sh" ...`. The bundled shell scripts
-call the **hosted API**, even when run on the user's laptop.
+call the **hosted API**, except `render.sh` and `audit.sh`, which are local verification wrappers.
 
 For new local documents, prefer Markdown → `docparse --convert`; use a supplied
 DOCX as `--reference-doc`. Read [Document authoring and verification](resources/document-authoring.md)
@@ -166,6 +166,11 @@ names and schemas; the service exposes these capabilities:
 **First run / no API key**: call `mcpParse` with `apiKey=""` **and** `requestId=""` (both empty strings). The server replies `AUTH_REQUIRED` with a `suggested_fix` to call `mcpAuth` — run that device flow, then retry `mcpParse` with the returned key. (Omitting `apiKey`/`requestId` instead returns a generic `missing required parameter(s)` error, not the auth prompt.)
 
 ## Generating Documents
+
+Before authoring, read [Writing quality](resources/writing-quality.md).
+When a reference is supplied, read [Template inspection](resources/template-inspection.md).
+For faithful conversion, preserve the source wording rather than applying an
+editorial rewrite. Verification commands are in the authoring reference.
 
 **Markdown is the format you can write, so it is how you generate a document.**
 Write Markdown, then convert it to the target format. There is no separate
@@ -359,6 +364,8 @@ work. Anything unrecognised is a typed `UNSUPPORTED_TARGET_FORMAT` error.
 
 | Script | Usage | Purpose |
 |--------|-------|---------|
+| `scripts/render.sh` | `bash scripts/render.sh <file> --output-dir <new-dir> [--compare <file>]` | Local rendering and visual comparison |
+| `scripts/audit.sh` | `bash scripts/audit.sh <file.docx> [--strict]` | Read-only local structural audit |
 | `scripts/health.sh` | `bash scripts/health.sh` | Check API health |
 | `scripts/parse.sh` | `bash scripts/parse.sh <filepath> [format]` | Parse a document |
 | `scripts/convert.sh` | `bash scripts/convert.sh <input> <target> [out]` | Generate/convert a document |

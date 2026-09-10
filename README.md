@@ -210,3 +210,14 @@ ln -s ~/dev/sunholo/docparse-skill/pi-extension ~/.pi/agent/extensions/docparse
 - [API Reference](https://www.sunholo.com/ailang-parse/api.html)
 - [MCP Server Guide](https://www.sunholo.com/ailang-parse/mcp.html)
 - [Pricing](https://www.sunholo.com/ailang-parse/pricing.html)
+
+### Authoring and verification
+
+The skill includes on-demand writing-quality and template-inspection guidance.
+Its local `scripts/audit.sh` and `scripts/render.sh` wrappers call the AILANG Parse
+companions `docparse-audit` and `docparse-render`. These companions are currently
+in the Parse checkout's unreleased changes; older published installs may not
+include them. Update the engine when released, or set `DOCPARSE_AUDIT_BIN` and
+`DOCPARSE_RENDER_BIN` to the checkout executables. Rendering/comparison and audits
+are implemented in AILANG; Office rendering additionally uses LibreOffice and
+Poppler. No new Python dependency is required.

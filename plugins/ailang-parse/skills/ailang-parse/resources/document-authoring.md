@@ -44,7 +44,9 @@ page setup and headers/footers (one-based; default is the last section).
 installed CLI's supported flags before relying on features from newer releases.
 An unreadable/non-DOCX reference must not silently become generic styling.
 
-Reference templates currently apply to DOCX output. Do not promise that the
+These section and table options apply to DOCX output. Current AILANG Parse main
+also supports ODT, PPTX and HTML styling references; check installed-version
+support and see template-inspection.md. Do not promise that the
 template's body layout or every feature of an existing document will survive
 regeneration. Inspect the final rendering.
 
@@ -66,18 +68,39 @@ unintended blank pages, awkward page breaks, and misplaced headers or footers.
 Fix the content/template or use an appropriate editing tool, regenerate, and
 render again after layout-sensitive changes.
 
-When the Codex Documents skill is available for DOCX work, use its packaged
-`render_docx.py` and its runtime instructions for visual QA. Resolve that skill's
-actual installed location; do not hardcode a plugin version, Python runtime, or
-LibreOffice path. Follow its applicable render-and-inspect requirements while
-preserving the user's choice of docparse for generation. For slides or PDFs,
-use the available format-specific renderer and review workflow.
+Use the local companions shipped by AILANG Parse:
 
-Without those skills, use an available document renderer or native application
-to inspect the result. If rendering is unavailable, report that structural
-checks passed but visual verification is incomplete; do not claim visual QA.
-This skill does not itself bundle a renderer. Keep QA artifacts separate and
-deliver only the file formats requested by the user.
+```bash
+mkdir -p ./qa
+bash "$DOCPARSE_SKILL_DIR/scripts/audit.sh" ./output/report.docx > ./qa/audit.json
+bash "$DOCPARSE_SKILL_DIR/scripts/render.sh" ./output/report.docx --output-dir ./qa/render-1
+# For an edit, compare before and after with the same renderer and DPI:
+bash "$DOCPARSE_SKILL_DIR/scripts/render.sh" ./before.docx --compare ./output/report.docx --output-dir ./qa/comparison-1
+```
+
+`render.sh` needs LibreOffice and Poppler (`pdftoppm`) for Office input; PDF
+input needs only Poppler. Rendering, raster comparison and audits run in AILANG;
+no Python or Pillow is needed. Explicit `--soffice` and `--pdftoppm` paths override
+executable discovery. `--timeout` (seconds, default 120) bounds each subprocess; `--dpi` controls page
+resolution. The output directory must be new, preventing stale QA reuse.
+
+The manifest records input hashes, tool paths, page directories and comparison
+findings. Comparison hashes uncompressed Poppler rasters to identify changed,
+added and removed pages; inspect the two PNG sets side by side. It does not
+produce diff overlays or align paragraphs across pagination changes.
+`visual_review: pending` is intentional: the agent must actually inspect every
+image. The audit is read-only, reports limited structural checks, and returns
+exit 2 for unreadable input; `--strict` returns exit 1 for findings. A warning
+about a table header needs semantic review, not an automatic fix.
+
+When the Codex Documents skill is used, follow its runtime and rendering
+requirements, using its packaged renderer instead if required. Resolve its
+installed paths rather than embedding a versioned cache location here.
+
+If local companions are missing, use an available renderer/native application or
+report incomplete visual verification. Do not upload documents as a fallback.
+The wrappers accept `DOCPARSE_RENDER_BIN` / `DOCPARSE_AUDIT_BIN` for a checkout's
+executables. Keep QA files separate and deliver only requested formats.
 
 For spreadsheets, parsing is also not evidence that formulas recalculate or
 charts are correct. Use spreadsheet-specific calculation and inspection tools
