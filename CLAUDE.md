@@ -25,10 +25,13 @@ docparse notes.md --convert slides.pptx        # writes a real file, not base64 
 ```
 
 The installer needs ailang_parse **0.40.0+**; before that the published package
-shipped no wrapper, and a clone was the only route. `ailang install
-sunholo/ailang_parse`, Docker and the pip/npm/Go SDKs are still not install
-routes — the first leaves you to wire up your own entry module, the second has
-no published image, and the SDKs are hosted-API clients with no parsers.
+shipped no wrapper, and a clone was the only route. With `ailang` already on
+PATH, `ailang install sunholo/ailang_parse` (0.42.0+) also works and gives the
+*thin* `docparse` shim — parse one file / `--convert`, output beside the input,
+no `--output-dir`, batch, `--describe` or PDF backends. Docker and the
+pip/npm/Go SDKs are still not install routes — no published image, and the
+SDKs are hosted-API clients with no parsers. Output defaults to the directory
+you ran from since 0.42.0 (it used to be `docparse/data` inside the clone).
 
 `docling`/`liteparse` are Python packages in the install's uv environment;
 `uv` alone is not enough, hence `--install-backends`. A scanned PDF

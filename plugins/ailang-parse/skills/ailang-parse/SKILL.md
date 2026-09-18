@@ -105,12 +105,19 @@ docparse --install-backends   # docling + liteparse, for scans and layout
 without it a **scanned** PDF fails on the default backend. AI backends
 authenticate via `gcloud auth application-default login` (ADC), not an API key.
 
+**If `ailang` is already on PATH** (ailang_parse **0.42.0+**, AILANG v0.40.0
+dev or later), `ailang install sunholo/ailang_parse` is also a route: the
+package's `[bin]` table puts a `docparse` shim in `~/.ailang/bin`. It is the
+*thin* CLI — one file in, JSON/Markdown or `--convert` out, written next to
+the input. It has **no** `--output-dir`, batch, `--describe`, PDF backends or
+`--install-backends`, so prefer the installer above when you will need any of
+those; if both are installed, `ailang install` reports which one `docparse`
+resolves to. (Before 0.42.0 this route fetched the package but gave no CLI.)
+
 Still do **not** offer these as install routes — none yields a working CLI:
-`ailang install sunholo/ailang_parse` fetches the package but leaves you to
-wire up your own `ailang.toml` + `ailang lock` and entry module; the repo's
-Dockerfile has no published image (and pins `--caps IO,FS,Env`, so no PDF
-subprocesses or AI); and the pip/npm/Go SDKs are hosted-API clients containing
-no parsers. A `git clone` still works and is the contributors' path.
+the repo's Dockerfile has no published image (and pins `--caps IO,FS,Env`, so
+no PDF subprocesses or AI); and the pip/npm/Go SDKs are hosted-API clients
+containing no parsers. A `git clone` still works and is the contributors' path.
 
 **Use**
 
@@ -128,8 +135,10 @@ Three things that bite:
 
 1. **Batch, never loop.** `docparse *.docx` compiles once;
    `for f in *.docx; do docparse "$f"; done` recompiles per file and is ~10x slower.
-2. **Pass `--output-dir`.** The default output lands in `docparse/data` inside
-   the clone, which reads as "the output went missing".
+2. **Pass `--output-dir`** when you want results collected somewhere. Since
+   0.42.0 the default is the directory you ran from (`./report.json` next to
+   `report.docx`); before that it was `docparse/data` inside the clone, which
+   read as "the output went missing".
 3. **Let the local PDF backends run before reaching for `ai`.** On the default
    backend the CLI already escalates `pdftotext` → `docling` by itself when
    there is no text layer, because both are free. `ai` is never automatic — it

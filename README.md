@@ -94,8 +94,12 @@ docparse --install-backends   # docling + liteparse, for scans and layout
 Without `docling`, a **scanned** PDF fails even on the default backend —
 `pdftotext` escalates to it automatically when it finds no text layer.
 
-Contributors can still `git clone` the repo and symlink `bin/docparse`; that
-remains the development workflow.
+If `ailang` is already installed, `ailang install sunholo/ailang_parse`
+(0.42.0+) is the shorter route: it puts a thin `docparse` shim on `PATH` that
+parses or `--convert`s one file, output beside the input — without the
+wrapper's `--output-dir`, batch, `--describe` or PDF backends. Contributors can
+still `git clone` the repo and symlink `bin/docparse`; that remains the
+development workflow.
 
 The two coexist. Once the plugin is installed, the skill carries the decision
 rule and tells you which path a given parse is using, so you are never

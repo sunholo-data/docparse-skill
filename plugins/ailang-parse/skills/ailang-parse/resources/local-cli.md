@@ -48,6 +48,23 @@ says so and prints the line to add.
 `.ail` sources but not the wrapper or the PDF adapter, so a clone was the only
 option. If you are on an older version, upgrade rather than working around it.
 
+### Already have `ailang`? The thin route (0.42.0+)
+
+```bash
+ailang install sunholo/ailang_parse     # writes ~/.ailang/bin/docparse
+docparse report.docx                    # -> ./report.docx.json + .md
+ailang bin list                         # / ailang bin uninstall docparse
+```
+
+The package's `[bin]` table (AILANG v0.40.0 dev+) generates a shim that runs
+`docparse/main` straight out of the registry cache — no prefix, no `chmod`, no
+network beyond the fetch. It covers **parse one file** and **`--convert`**,
+output beside the input. It does not carry the wrapper's flags: no
+`--output-dir`, no batch, no `--describe`/`--ai`, no PDF backends, no
+`--install-backends`. If the task needs any of those, use the installer in §2;
+both can coexist, and `ailang install` warns when the installer's `docparse`
+sits earlier on `PATH` and shadows the shim.
+
 ### Contributors: clone instead
 
 ```bash
@@ -167,8 +184,9 @@ survive a `Ctrl+C` and can be inspected mid-run.
 | `<out>/<name>.json` | typed blocks — the structured, authoritative form |
 | `<out>/<name>.md` | flattened Markdown, for feeding to an LLM |
 
-`<out>` defaults to `docparse/data` inside the clone. **Set `--output-dir`** to
-keep results next to the user's work rather than buried in the repo:
+`<out>` defaults to the directory you ran from (0.42.0+; earlier versions wrote
+into `docparse/data` inside the clone). **Set `--output-dir`** to collect
+results somewhere specific instead of beside each input:
 
 ```bash
 docparse ~/case-files/ --output-dir /tmp/parsed
@@ -253,7 +271,7 @@ no equivalent. Requires an AI backend, so the prompt goes to the provider.
 
 | Flag | Effect |
 |---|---|
-| `--output-dir DIR` | write outputs to `DIR` instead of `docparse/data` |
+| `--output-dir DIR` | write outputs to `DIR` instead of beside the input (pre-0.42.0: instead of `docparse/data`) |
 | `--describe` | AI descriptions for images (**sends content**) |
 | `--summarize` | AI document summary (**sends content**) |
 | `--ai MODEL` | default `gemini-2.5-flash`; `gemini-3-flash-preview` is ~5x slower on PDFs |
@@ -284,7 +302,7 @@ AI parsing authenticates via Google ADC, not an API key — see §2b.
 | `ailang: command not found` | wrapper works, runtime missing | re-run the installer (§2); it installs the runtime |
 | `cannot locate docparse/main.ail above …` | wrapper copied away from its sources | re-run the installer (§2) rather than moving files back |
 | Batch feels 10x too slow | a shell loop, not batch mode | pass all files or the folder in one invocation |
-| Output "went missing" | landed in `docparse/data` inside the clone | pass `--output-dir` |
+| Output "went missing" | pre-0.42.0 default landed in `docparse/data` inside the clone | upgrade, or pass `--output-dir` |
 
 ## 10. Reporting problems
 
