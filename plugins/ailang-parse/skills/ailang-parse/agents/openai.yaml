@@ -5,3 +5,12 @@ interface:
 
 policy:
   allow_implicit_invocation: true
+
+# Optional hosted backend. The local docparse CLI works without it.
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "ailang-parse"
+      description: "AILANG Parse hosted MCP server"
+      transport: "streamable_http"
+      url: "https://docparse.ailang.sunholo.com/mcp/"

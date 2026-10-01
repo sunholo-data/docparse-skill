@@ -11,6 +11,30 @@ Inside Claude Code, add the marketplace and install the plugin:
 /plugin install ailang-parse@ailang-parse-marketplace
 ```
 
+In Codex (CLI, IDE, app), add the same repo as a plugin marketplace — this
+installs the skill **and** the hosted MCP server in one step:
+
+```bash
+codex plugin marketplace add sunholo-data/docparse-skill
+# then inside codex: /plugins → AILANG Parse → Install
+```
+
+### Package layout
+
+One plugin directory serves both ecosystems; the skill and the MCP URL exist once.
+
+| File | Read by |
+|---|---|
+| `.claude-plugin/marketplace.json` | Claude Code |
+| `.agents/plugins/marketplace.json` | Codex / ChatGPT |
+| `plugins/ailang-parse/.claude-plugin/plugin.json` + `.mcp.json` | Claude Code |
+| `plugins/ailang-parse/plugin.json` + `mcp.json` | [Agent Plugins](https://agent-plugins.org) — Codex, ChatGPT, OpenAI Plugin Directory |
+| `plugins/ailang-parse/skills/ailang-parse/` | both (Agent Skills standard; `agents/openai.yaml` is Codex UI metadata) |
+
+CI (`validate.yml`) runs `claude plugin validate --strict`, an install smoke
+test, and `scripts/validate-agent-plugins.mjs` (Agent Plugins JSON Schemas +
+same-version / same-MCP-URL / OpenAI listing-limit checks).
+
 ## Global Codex skill and shared Claude installation
 
 Codex discovers user-wide skills in `~/.agents/skills` and follows symlinked

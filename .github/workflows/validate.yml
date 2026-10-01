@@ -49,3 +49,41 @@ jobs:
           echo "$DETAILS" | grep -q "MCP servers (1)" \
             || { echo "::error::ailang-parse MCP server did not register"; exit 1; }
           echo "✓ skill + MCP server both registered"
+
+  agent-plugins:
+    name: Agent Plugins (Codex / ChatGPT) manifests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # No official Agent Plugins validator exists (OpenAI validates only on
+      # ZIP upload), so check the published JSON Schemas plus the invariants
+      # that keep the Claude and portable manifests from drifting apart.
+      - name: Validate plugin.json / mcp.json / marketplace
+        run: |
+          npm i --no-save ajv@8 ajv-formats@3
+          node scripts/validate-agent-plugins.mjs
+
+      # Same "validates but doesn't load" guard as the Claude job: install the
+      # plugin through the Codex CLI from this checkout and assert both the
+      # plugin and its MCP server register. No auth needed for install.
+      - name: Codex install smoke test
+        run: |
+          set -euo pipefail
+          npm install -g @openai/codex
+          export CODEX_HOME="$RUNNER_TEMP/codex-home"
+          mkdir -p "$CODEX_HOME"
+          codex plugin marketplace add "$GITHUB_WORKSPACE"
+          codex plugin add ailang-parse@ailang-parse-marketplace
+          ls "$CODEX_HOME"/plugins/cache/ailang-parse-marketplace/ailang-parse/*/skills/ailang-parse/SKILL.md \
+            || { echo "::error::ailang-parse skill not installed by Codex"; exit 1; }
+          MCP="$(codex mcp list)"
+          echo "$MCP"
+          echo "$MCP" | grep -q "docparse.ailang.sunholo.com/mcp/" \
+            || { echo "::error::ailang-parse MCP server did not register in Codex"; exit 1; }
+          echo "✓ Codex installed skill + MCP server"
