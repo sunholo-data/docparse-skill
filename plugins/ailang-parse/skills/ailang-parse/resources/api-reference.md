@@ -151,7 +151,7 @@ qmd). Branch on the field, never on the target — decoding a utf8 payload as
 base64 yields silent garbage.
 
 **Metering:** one request per conversion, on the same counters and key gate as
-`/parse`, plus the AI sub-quota when the *source* format needs AI (PDF, images).
+`/parse`, plus the AI sub-quota when the source is parsed with AI (images, or a PDF with `pdfBackend="ai"`).
 Output size does not affect the charge.
 
 Note: AI generation from a prompt (`--generate` / `--prompt`) is a local CLI

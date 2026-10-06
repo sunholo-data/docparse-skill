@@ -120,7 +120,7 @@ documents (writing quality, templates, verification), and wrapper scripts.
 |----------|---------|-------|
 | Office | DOCX, PPTX, XLSX, ODT, ODP, ODS | 5-50ms deterministic |
 | Text | CSV, Markdown, HTML, EPUB, EML, MBOX, TEX, RTF | 5-15ms deterministic |
-| PDF / image | PDF, PNG, JPG | hosted: counts as an AI request; local CLI: `pdftotext` first |
+| PDF / image | PDF, PNG, JPG | PDF: `pdftotext`, no AI (`pdfBackend="ai"` for scans); images: AI |
 | Audio / video | WAV, MP3, MP4, and other media | local CLI only — the hosted API rejects these |
 
 **Generation (9):** DOCX, PPTX, XLSX, ODT, ODP, ODS, HTML, Markdown, QMD (Quarto)
@@ -133,7 +133,7 @@ goes stale.
 Per document, not per page: each parse or conversion is one request, whatever
 its length.
 
-| Tier | Monthly | Requests | AI requests (PDF, images) | Max file |
+| Tier | Monthly | Requests | AI requests (images; PDFs only with `pdfBackend="ai"`) | Max file |
 |------|---------|----------|---------------------------|----------|
 | Free | EUR 0 | 1,000 | 50 | 10 MB |
 | Pro | EUR 29 | 100,000 | 500 | 25 MB |

@@ -47,7 +47,7 @@ the difference is where the document goes.
 | Audio / video | supported | **rejected** — self-host only |
 | Slow PDF backends (`docling`, `liteparse`) | up to 20 min | unusable — hard 30s cap |
 | AI generation from a prompt | `--generate` | not available |
-| Output of a conversion | a real file on disk | base64/utf8 inside JSON |
+| Output of a conversion | a real file on disk | a one-hour `download_url` (MCP), plus base64/utf8 inside JSON |
 
 **Decide before the first call, and say which path you are using.** Users have
 been surprised to find an MCP parse had uploaded a document.
@@ -170,7 +170,18 @@ these capabilities:
 | `mcpAccount` | `action`: `status` (default — tier/quota/usage), `keys` (list keys + per-key usage), `usage` (alias for keys), `pricing` (no auth), `history` / `history_on` / `history_off` |
 | `submit_feedback` | Report a bug / feature / docs gap to the maintainers |
 
-**Passing parameters**: only the parameters marked required in a tool's schema are needed; optional ones (`requestId`, `outputPath`, `action`) can be left out.
+**Giving a tool the user's document** (`mcpParse`, `mcpConvert`, `editDocument`): pass ONE of
+- `content` + `filename`: the document itself. Text formats (Markdown, HTML, CSV) as plain
+  text; binary files (DOCX, PDF, PPTX, XLSX, ...) base64-encoded with `contentEncoding="base64"`.
+  The filename's extension picks the parser (`notes.md`, `report.docx`).
+- an `https://` URL of a publicly reachable document (`filepath` / `input`);
+- a sample id from `mcpFormats` (`sample_docx_formatting`).
+
+To create a document, write Markdown and send it to `mcpConvert` as `content` with
+`filename: "notes.md"`. The result carries **`download_url`**, a link to the generated file
+valid for one hour: give it to the user. (It also carries the file as base64 in `content`.)
+
+**Passing parameters**: only the parameters marked required in a tool's schema are needed; everything else is optional.
 
 **Recommended workflow**: Call `mcpFormats` first to discover capabilities, then `mcpEstimate` to check cost, then `mcpParse` or `mcpConvert`. `mcpFormats` and `mcpEstimate` need no sign-in.
 
@@ -201,9 +212,9 @@ docparse paper.md --convert ./output/paper.qmd --output-dir ./parsed
 
 For the hosted path, use
 `bash "$DOCPARSE_SKILL_DIR/scripts/convert.sh" report.md docx ./output/report.docx`.
-For MCP, inspect the connected `mcpConvert` schema. A hosted server cannot read
-an arbitrary laptop path: use a supported upload/reference mechanism or the
-multipart-upload script, and decode the returned payload into the output file.
+Over MCP, send the Markdown to `mcpConvert` as `content` with `filename: "report.md"` and give
+the user the returned `download_url`. A hosted server cannot read a path on the user's
+machine: send the content itself, a public link, or use the upload script.
 
 **What survives Markdown → any output format:**
 
@@ -447,8 +458,9 @@ All errors include `suggested_fix` — a plain-text instruction you can act on d
 
 Every parse and every conversion counts as **one request** against the tier's
 monthly allowance, whatever the page count or output size. Formats the service
-classes as AI (PDF and images: PNG, JPG, GIF, BMP, WebP, TIFF) also count as
-**one AI request** against the smaller AI allowance. `mcpEstimate` /
+uses AI also counts as **one AI request** against the smaller AI allowance: images
+(PNG, JPG, GIF, BMP, WebP, TIFF) always, and a PDF only when parsed with
+`pdfBackend="ai"` (scanned PDFs). The default PDF backend, `pdftotext`, uses no AI. `mcpEstimate` /
 `/api/v1/estimate` tells you which applies (`counts_as_ai_request`) before you
 spend anything; `mcpFormats` / `/api/v1/pricing` has the live limits.
 
