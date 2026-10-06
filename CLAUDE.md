@@ -9,7 +9,8 @@ local `docparse` CLI runs the same parsers on the user's machine with nothing
 uploaded. Decide before the first call and say which path you are using.
 
 Prefer the **local CLI** when the material is confidential/restricted, when the
-user says "don't upload this", for files over 32MB, for audio/video, when a PDF
+user says "don't upload this", for files over the hosted limit (10/25/50 MB by
+tier), for audio/video, when a PDF
 needs `docling`/`liteparse` (hosted is capped at 30s), or for `--generate`
 (prompt-to-document, which the hosted API does not have).
 
@@ -101,7 +102,7 @@ Office formats are deterministic (5-50ms). On the hosted API, PDF and images req
 
 ## Pricing
 
-Per-document, not per-page. Free: 1,000/month + 50 AI. Pro EUR 29: 100K + 500 AI. Business EUR 99: 500K + 2,000 AI.
+Per-document, not per-page: one request per parse or conversion, plus one AI request for PDFs and images. Free: 1,000/month + 50 AI, 10 MB files. Pro EUR 29: 100K + 500 AI, 25 MB. Business EUR 99: 500K + 2,000 AI, 50 MB.
 
 ## API Base URL
 

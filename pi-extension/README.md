@@ -31,7 +31,7 @@ docparse --install-backends   # optional: local OCR/layout PDF backends
 Then link the extension:
 
 ```bash
-ln -s ~/dev/sunholo/docparse-skill/pi-extension ~/.pi/agent/extensions/docparse
+ln -s "$(pwd -P)/pi-extension" ~/.pi/agent/extensions/docparse   # from the root of your clone
 ```
 
 Verify from any directory:
