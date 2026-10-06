@@ -40,7 +40,26 @@ provider. Full reference:
 
 ## MCP Server
 
-The plugin registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/` providing 10 tools:
+The hosted MCP server has two surfaces:
+
+- `https://docparse.ailang.sunholo.com/mcp/connect/` — what the Claude and Codex plugins use.
+  OAuth sign-in run by the client (it advertises client ID metadata documents, not dynamic client
+  registration). Not yet verified with Gemini CLI.
+- `https://docparse.ailang.sunholo.com/mcp/` — the agent surface. Works with any MCP client:
+  pass your `dp_` key as a header, so it never enters the model's context. In Gemini CLI's
+  `settings.json`:
+
+  ```json
+  "mcpServers": {
+    "ailang-parse": {
+      "httpUrl": "https://docparse.ailang.sunholo.com/mcp/",
+      "headers": { "X-API-Key": "$DOCPARSE_API_KEY" }
+    }
+  }
+  ```
+
+The agent surface provides these 10 tools (`/mcp/connect/` has the same minus `mcpAuth` and
+`mcpAuthPoll`):
 
 1. **mcpFormats** — Discover formats, samples, pricing. Call this first. No auth needed.
 2. **mcpEstimate** — Predict cost/latency before parsing. No auth needed.
@@ -48,9 +67,9 @@ The plugin registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/`
 4. **mcpConvert** — Generate a document — docx, pptx, xlsx, odt, odp, ods, html, md, qmd.
 5. **editDocument** — Parse a document, apply JSON edit deltas, return modified blocks (Office formats only).
 6. **getUploadUrl** — Business tier only. Pre-authenticated GCS upload URL for large files.
-7. **mcpAuth** — Start RFC 8628 device auth to get an API key.
-8. **mcpAuthPoll** — Poll for auth completion.
-9. **mcpAccount** — `status` (default), `keys`, `usage`, `pricing` (no auth).
+7. **mcpAuth** — Start RFC 8628 device auth to get an API key (agent surface only).
+8. **mcpAuthPoll** — Poll for auth completion (agent surface only).
+9. **mcpAccount** — `status` (default), `keys`, `usage`, `pricing` (no auth), `history`, `history_on`, `history_off`.
 10. **submit_feedback** — Anonymous bug/feature/docs report. Use `package="sunholo/ailang_parse"`.
 
 ## Supported Formats
@@ -63,7 +82,7 @@ Office/text formats are deterministic (5-50ms, no AI). On the hosted API, PDF an
 
 ## Authentication
 
-API keys use `dp_` prefix. Get one via the device auth flow (`mcpAuth` tool) or the dashboard at https://www.sunholo.com/docparse/dashboard.html
+API keys use `dp_` prefix. Get one from the dashboard at https://www.sunholo.com/docparse/dashboard.html, with `scripts/device-auth.sh`, or with the `mcpAuth` device flow on the agent surface. Send it as an `X-API-Key` or `Authorization: Bearer` header rather than a tool argument.
 
 ## Shell Scripts (if MCP unavailable)
 

@@ -151,9 +151,13 @@ are in [resources/local-cli.md](resources/local-cli.md).
 
 ## MCP Tools (the hosted path)
 
-The Claude plugin bundles an MCP connection to `https://docparse.ailang.sunholo.com/mcp/`.
-A standalone skill link does not. When connected, discover the actual tool
-names and schemas; the service exposes these capabilities:
+The plugin bundles an MCP connection to `https://docparse.ailang.sunholo.com/mcp/connect/`.
+A standalone skill link does not. It signs in with **OAuth**: the first call to a
+tool that needs an account makes the client (Claude, Codex, ChatGPT) open a
+sign-in page; the user signs in with Google or GitHub and approves, and the
+client holds the token from then on. Tools take **no `apiKey` argument** there.
+When connected, discover the actual tool names and schemas; the service exposes
+these capabilities:
 
 | Tool | Purpose |
 |------|---------|
@@ -163,16 +167,16 @@ names and schemas; the service exposes these capabilities:
 | `getUploadUrl` | Pre-authenticated GCS upload URL for files over the 32MB hosted limit (**Business tier only**) |
 | `mcpFormats` | Discover formats, samples, pricing tiers, capabilities |
 | `mcpEstimate` | Predict cost/latency before parsing |
-| `mcpAuth` | Start device auth to get an API key (RFC 8628) |
-| `mcpAuthPoll` | Poll for auth completion |
-| `mcpAccount` | `action`: `status` (default — tier/quota/usage), `keys` (list keys + per-key usage), `usage` (alias for keys), `pricing` (no auth) |
+| `mcpAccount` | `action`: `status` (default — tier/quota/usage), `keys` (list keys + per-key usage), `usage` (alias for keys), `pricing` (no auth), `history` / `history_on` / `history_off` |
 | `submit_feedback` | Report a bug / feature / docs gap to the maintainers |
 
-**Passing parameters**: every MCP tool string parameter is *required*. If you don't have a value yet — e.g. no API key, or no `requestId` — pass an **empty string `""`**; never omit it. Omitting a declared parameter returns `missing required parameter(s): ...`.
+**Passing parameters**: only the parameters marked required in a tool's schema are needed; optional ones (`requestId`, `outputPath`, `action`) can be left out.
 
-**Recommended workflow**: Call `mcpFormats` first to discover capabilities, then `mcpEstimate` to check cost, then `mcpParse` or `mcpConvert`.
+**Recommended workflow**: Call `mcpFormats` first to discover capabilities, then `mcpEstimate` to check cost, then `mcpParse` or `mcpConvert`. `mcpFormats` and `mcpEstimate` need no sign-in.
 
-**First run / no API key**: call `mcpParse` with `apiKey=""` **and** `requestId=""` (both empty strings). The server replies `AUTH_REQUIRED` with a `suggested_fix` to call `mcpAuth` — run that device flow, then retry `mcpParse` with the returned key. (Omitting `apiKey`/`requestId` instead returns a generic `missing required parameter(s)` error, not the auth prompt.)
+**First run / not signed in**: just call the tool. If the client is not signed in yet, the server answers 401 and the client starts the OAuth sign-in itself; retry once the user has approved. Never ask the user to paste an API key into the chat.
+
+**Headless agents without a browser** can use the agent surface `https://docparse.ailang.sunholo.com/mcp/` instead: same tools plus `mcpAuth` / `mcpAuthPoll` (RFC 8628 device flow), with the `dp_` key passed as `apiKey` or, better, sent as an `Authorization: Bearer` / `X-API-Key` header so it stays out of the model's context.
 
 ## Generating Documents
 
@@ -227,7 +231,7 @@ document authored from a prompt, write the Markdown yourself and convert it.
 
 ## Editing Documents (deltas)
 
-`editDocument(filepath, deltas, apiKey)` parses a document, applies a JSON array
+`editDocument(filepath, deltas)` parses a document, applies a JSON array
 of edit deltas, and returns the modified blocks — same schema as `mcpParse` with
 `outputFormat="blocks"`. Pass `deltas=""` for a round-trip (parse + unchanged
 blocks back).
@@ -239,7 +243,7 @@ blocks back).
 
 ## Uploading Large Files
 
-`getUploadUrl(filename, mimeType, apiKey)` returns a pre-authenticated GCS URL
+`getUploadUrl(filename, mimeType)` returns a pre-authenticated GCS URL
 (**Business tier only**). PUT the file bytes to that URL, then pass the returned
 `gcs_ref` to `mcpParse`. This bypasses the 32MB hosted request limit.
 
@@ -292,11 +296,13 @@ Set the `DOCPARSE_URL` env var to point the scripts at a different deployment.
 
 ## Authentication
 
-API key with `dp_` prefix. Pass as `apiKey` in the JSON body, or set `DOCPARSE_API_KEY` env var for skill scripts.
+**MCP (the plugin)**: OAuth — see [MCP Tools](#mcp-tools-the-hosted-path). Nothing to configure.
+
+**REST API and the shell scripts below**: an API key with `dp_` prefix. Pass it as `apiKey` in the JSON body or as an `X-API-Key` / `Authorization: Bearer` header, or set the `DOCPARSE_API_KEY` env var for skill scripts.
 
 **Get a key**: https://www.sunholo.com/docparse/dashboard.html
 
-**For headless agents**: Use the device authorization flow:
+**For headless agents** (REST/scripts): use the device authorization flow:
 ```bash
 bash scripts/device-auth.sh
 ```

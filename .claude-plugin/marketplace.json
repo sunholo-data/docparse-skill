@@ -8,7 +8,7 @@
     {
       "name": "ailang-parse",
       "source": "./plugins/ailang-parse",
-      "description": "AILANG Parse — Universal document parsing and generation. 17 input formats, 9 output formats, MCP integration with device auth, cost estimation, and account management."
+      "description": "AILANG Parse — Universal document parsing and generation. 17 input formats, 9 output formats, MCP integration with OAuth sign-in, cost estimation, and account management."
     }
   ]
 }

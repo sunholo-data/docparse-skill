@@ -43,9 +43,9 @@ Install and the full reference:
 
 ## MCP Server
 
-This plugin registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/` which provides 10 tools:
+This plugin registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/connect/`, which signs in with OAuth and provides 8 tools:
 
-| Tool | Purpose | Auth Required |
+| Tool | Purpose | Sign-in Required |
 |------|---------|---------------|
 | `mcpParse` | Parse any document into blocks, Markdown, HTML, or A2UI | Hosted: yes |
 | `mcpConvert` | Generate a document — docx, pptx, xlsx, odt, odp, ods, html, md, qmd | Hosted: yes |
@@ -53,9 +53,7 @@ This plugin registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/
 | `getUploadUrl` | Pre-authenticated GCS upload URL for files > 32MB | Hosted: yes, Business tier |
 | `mcpFormats` | Discover formats, 26 samples, pricing tiers, capabilities | No |
 | `mcpEstimate` | Predict cost/latency before parsing | No |
-| `mcpAuth` | Start device auth to get an API key (RFC 8628) | No |
-| `mcpAuthPoll` | Poll for auth completion | No |
-| `mcpAccount` | `status` (default), `keys`, `usage`, `pricing` | Yes (except `action:"pricing"`) |
+| `mcpAccount` | `status` (default), `keys`, `usage`, `pricing`, `history`, `history_on`, `history_off` | Yes (except `action:"pricing"`) |
 | `submit_feedback` | Anonymous bug/feature/docs report; `package="sunholo/ailang_parse"` routes to the AILANG Parse inbox | No |
 
 ## Recommended Workflow
@@ -63,15 +61,20 @@ This plugin registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/
 1. Call `mcpFormats` first to discover capabilities, samples, and pricing
 2. Call `mcpEstimate` to check if AI is needed and predict cost
 3. Call `mcpParse` or `mcpConvert` with the document
-4. If you get `AUTH_REQUIRED`, call `mcpAuth` to start device auth, then `mcpAuthPoll`
+4. If the client is not signed in, the first account tool call triggers the OAuth sign-in in the client; retry after the user approves
 
 ## Authentication
 
-- **No auth needed** for `mcpFormats`, `mcpEstimate`, and `mcpAccount(action:"pricing")`
-- **API key required** for `mcpParse`, `mcpConvert`, and other `mcpAccount` actions
-- Keys use `dp_` prefix (e.g. `dp_a1b2c3d4...`)
-- Get a key via `mcpAuth` (device flow) or the [dashboard](https://www.sunholo.com/docparse/dashboard.html)
-- Pass as `apiKey` parameter in tool calls, or set `DOCPARSE_API_KEY` env var for scripts
+- **MCP: OAuth.** The client (Claude Code: `/mcp` → Authenticate) opens a sign-in page on
+  `docparse.ailang.sunholo.com`; the user signs in with Google or GitHub and approves. The client
+  keeps the token; tools take no `apiKey` argument. The app's key shows on the
+  [dashboard](https://www.sunholo.com/docparse/dashboard.html) labelled `oauth: …` and can be revoked there.
+- **No sign-in needed** for `mcpFormats`, `mcpEstimate`, and `mcpAccount(action:"pricing")`
+- **Scripts and REST**: a `dp_` API key (e.g. `dp_a1b2c3d4...`) from the dashboard or
+  `scripts/device-auth.sh`, in `DOCPARSE_API_KEY`. Never paste a key into the chat.
+- **Headless agents without a browser**: the agent surface `https://docparse.ailang.sunholo.com/mcp/`
+  has the same tools plus `mcpAuth`/`mcpAuthPoll` (device flow) and takes the key as `apiKey` or
+  as an `Authorization: Bearer` / `X-API-Key` header
 
 ## Fallback Scripts
 
@@ -83,7 +86,7 @@ bash plugins/ailang-parse/skills/ailang-parse/scripts/parse.sh FILE FMT # Parse 
 bash plugins/ailang-parse/skills/ailang-parse/scripts/estimate.sh FILE  # Estimate cost
 bash plugins/ailang-parse/skills/ailang-parse/scripts/samples.sh        # List test files
 bash plugins/ailang-parse/skills/ailang-parse/scripts/capabilities.sh   # Full service contract
-bash plugins/ailang-parse/skills/ailang-parse/scripts/device-auth.sh    # Get API key
+bash plugins/ailang-parse/skills/ailang-parse/scripts/device-auth.sh    # Get an API key for the scripts
 ```
 
 ## Supported Formats

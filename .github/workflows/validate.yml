@@ -84,6 +84,6 @@ jobs:
             || { echo "::error::ailang-parse skill not installed by Codex"; exit 1; }
           MCP="$(codex mcp list)"
           echo "$MCP"
-          echo "$MCP" | grep -q "docparse.ailang.sunholo.com/mcp/" \
+          echo "$MCP" | grep -q "docparse.ailang.sunholo.com/mcp/connect/" \
             || { echo "::error::ailang-parse MCP server did not register in Codex"; exit 1; }
           echo "✓ Codex installed skill + MCP server"

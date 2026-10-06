@@ -3,7 +3,7 @@
 // Lives in sunholo-data/docparse-skill (the public distribution repo for the
 // AILANG Parse Claude plugin) as the pi-native equivalent of that plugin:
 // pi does not load MCP servers, so instead of the hosted MCP endpoint
-// (https://docparse.ailang.sunholo.com/mcp/) this extension registers native
+// (https://docparse.ailang.sunholo.com/mcp/connect/) this extension registers native
 // pi tools that call:
 //
 // Two transports:
