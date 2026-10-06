@@ -3,6 +3,18 @@
 Two directions: **parse** a document into blocks, or **generate** one from
 Markdown. Both are shown in each language below.
 
+The quickest route is an SDK, which handles uploads, the response envelope and
+device sign-in: `pip install ailang-parse` (`from ailang_parse import DocParse`)
+or `npm i @ailang/parse`. The raw HTTP below is for everything else.
+
+Two rules every client must follow:
+
+- **Upload local files** as multipart (`filepath=@…`). The API never reads a
+  path on your disk; a path sent as JSON returns `INPUT_NOT_FOUND`. JSON
+  `filepath` is only for `sample_…` ids.
+- **Send the key as a header** (`X-API-Key` or `Authorization: Bearer`) rather
+  than in the body, so it stays out of logs.
+
 ## Python
 
 ```python
@@ -11,12 +23,14 @@ import requests, json
 API_BASE = "https://docparse.ailang.sunholo.com"
 API_KEY = "dp_your_key_here"
 
-# Parse a document (apiKey is a named JSON param, not a header)
-resp = requests.post(
-    f"{API_BASE}/api/v1/parse",
-    headers={"Content-Type": "application/json"},
-    json={"filepath": "data/test_files/sample.docx", "outputFormat": "blocks", "apiKey": API_KEY}
-)
+# Parse a local document: upload it, key in a header
+with open("report.docx", "rb") as fh:
+    resp = requests.post(
+        f"{API_BASE}/api/v1/parse",
+        headers={"X-API-Key": API_KEY},
+        files={"filepath": ("report.docx", fh)},
+        data={"outputFormat": "blocks"},
+    )
 data = resp.json()
 result = data["result"]
 # result is a JSON-encoded string for @nowrap endpoints
@@ -39,8 +53,9 @@ import base64
 with open("report.md", "rb") as fh:
     resp = requests.post(
         f"{API_BASE}/api/v1/convert",
+        headers={"X-API-Key": API_KEY},
         files={"filepath": ("report.md", fh)},
-        data={"target": "docx", "apiKey": API_KEY},
+        data={"target": "docx"},
     )
 out = resp.json()
 # Unwrap the serve-api envelope, same as /parse
@@ -62,10 +77,14 @@ with open(out["filename"], "wb") as fh:
 const API_BASE = "https://docparse.ailang.sunholo.com";
 const API_KEY = "dp_your_key_here";
 
+// Upload the file (the API never reads a path on your disk); key in a header
+const upload = new FormData();
+upload.append("filepath", new Blob([await readFile("report.docx")]), "report.docx");  // node:fs/promises
+upload.append("outputFormat", "blocks");
 const resp = await fetch(`${API_BASE}/api/v1/parse`, {
   method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ filepath: "data/test_files/sample.docx", outputFormat: "blocks", apiKey: API_KEY })
+  headers: { "X-API-Key": API_KEY },
+  body: upload
 });
 
 const data = await resp.json();
@@ -83,9 +102,10 @@ Generate a document — write Markdown, upload it, decode on `encoding`:
 const form = new FormData();
 form.append("filepath", new Blob([markdownText], { type: "text/markdown" }), "report.md");
 form.append("target", "docx");
-form.append("apiKey", API_KEY);
 
-let out = await (await fetch(`${API_BASE}/api/v1/convert`, { method: "POST", body: form })).json();
+let out = await (await fetch(`${API_BASE}/api/v1/convert`, {
+  method: "POST", headers: { "X-API-Key": API_KEY }, body: form
+})).json();
 // Unwrap the serve-api envelope, same as /parse
 if (typeof out.result === "string") out = JSON.parse(out.result);
 
@@ -101,21 +121,25 @@ await writeFile(out.filename, bytes);   // node:fs/promises
 ## curl
 
 ```bash
-# Parse (apiKey in JSON body, not as a header)
+# Parse a local file (uploaded; key in a header)
 curl -X POST https://docparse.ailang.sunholo.com/api/v1/parse \
-  -H "Content-Type: application/json" \
-  -d '{"filepath":"data/test_files/sample.docx","outputFormat":"blocks","apiKey":"dp_your_key_here"}'
+  -H "X-API-Key: $DOCPARSE_API_KEY" \
+  -F "filepath=@report.docx" -F "outputFormat=blocks"
+
+# Parse a built-in sample (JSON filepath is only for sample ids)
+curl -X POST https://docparse.ailang.sunholo.com/api/v1/parse \
+  -H "X-API-Key: $DOCPARSE_API_KEY" -H "Content-Type: application/json" \
+  -d '{"filepath":"sample_docx_formatting","outputFormat":"markdown"}'
 
 # Generate a docx from Markdown (upload; response carries the file inline)
 curl -X POST https://docparse.ailang.sunholo.com/api/v1/convert \
-  -F "filepath=@report.md" -F "target=docx" -F "apiKey=dp_your_key_here" \
+  -H "X-API-Key: $DOCPARSE_API_KEY" -F "filepath=@report.md" -F "target=docx" \
   | python3 -c 'import base64,json,sys; d=json.load(sys.stdin); d=json.loads(d["result"]) if isinstance(d.get("result"),str) else d; \
 open(d["filename"],"wb").write(base64.b64decode(d["content"]) if d["encoding"]=="base64" else d["content"].encode())'
 
 # Estimate cost (no auth needed)
 curl -X POST https://docparse.ailang.sunholo.com/api/v1/estimate \
-  -H "Content-Type: application/json" \
-  -d '{"filepath":"report.pdf","outputFormat":"blocks"}'
+  -F "filepath=@report.pdf" -F "outputFormat=blocks"
 
 # List samples (no auth needed)
 curl https://docparse.ailang.sunholo.com/api/v1/samples
@@ -126,11 +150,11 @@ curl https://docparse.ailang.sunholo.com/api/v1/health
 # Device auth flow (for agents)
 curl -X POST https://docparse.ailang.sunholo.com/api/v1/auth/device \
   -H "Content-Type: application/json" \
-  -d '{"args":["my-agent","parse"]}'
+  -d '{"label":"my-agent","scope":"parse"}'
 # → Open verification_url in browser, approve, then poll:
 curl -X POST https://docparse.ailang.sunholo.com/api/v1/auth/device/poll \
   -H "Content-Type: application/json" \
-  -d '{"args":["<device_code_from_step_1>"]}'
+  -d '{"deviceCode":"<device_code_from_step_1>"}'
 ```
 
 ## Unstructured.io Migration

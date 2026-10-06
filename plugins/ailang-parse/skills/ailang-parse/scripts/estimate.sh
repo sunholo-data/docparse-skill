@@ -14,15 +14,16 @@ if [ -z "$filepath" ]; then
   exit 1
 fi
 
-if [ -z "$DOCPARSE_API_KEY" ]; then
-  echo "Error: DOCPARSE_API_KEY not set."
-  exit 1
+# No API key needed. A local file is uploaded (the hosted API cannot read the
+# caller's disk); anything else is taken as a sample_id.
+if [ -f "$filepath" ]; then
+  result=$(curl -s --max-time 60 -X POST "$DOCPARSE_URL/api/v1/estimate" \
+    -F "filepath=@${filepath}" -F "outputFormat=${output_format}")
+else
+  result=$(curl -s --max-time 15 -X POST "$DOCPARSE_URL/api/v1/estimate" \
+    -H "Content-Type: application/json" \
+    -d "{\"filepath\":\"$filepath\",\"outputFormat\":\"$output_format\"}")
 fi
-
-result=$(curl -s --max-time 15 -X POST "$DOCPARSE_URL/api/v1/estimate" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: $DOCPARSE_API_KEY" \
-  -d "{\"filepath\":\"$filepath\",\"output_format\":\"$output_format\"}")
 
 echo "$result" | python3 -c "
 import json, sys

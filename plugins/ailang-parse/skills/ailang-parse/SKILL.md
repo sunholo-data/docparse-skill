@@ -42,8 +42,8 @@ the difference is where the document goes.
 |---|---|---|
 | Where the document goes | deterministic backends stay on the machine; AI backends may send content | **uploaded to the cloud service** |
 | Setup | one `curl \| sh` (0.40.0+) | connected MCP server or API scripts |
-| API key / quota | none | `dp_` key, counts against tier |
-| File size | unlimited | 32MB (Business tier can pre-upload to GCS) |
+| Account / quota | none | OAuth sign-in (MCP) or `dp_` key (scripts); counts against the tier |
+| File size | unlimited | 10 MB Free, 25 MB Pro, 50 MB Business (over 32 MB only via Business GCS upload) |
 | Audio / video | supported | **rejected** — self-host only |
 | Slow PDF backends (`docling`, `liteparse`) | up to 20 min | unusable — hard 30s cap |
 | AI generation from a prompt | `--generate` | not available |
@@ -256,10 +256,11 @@ bash scripts/health.sh
 # 2. See available test files
 bash scripts/samples.sh
 
-# 3. Parse a document
-bash scripts/parse.sh data/test_files/sample.docx blocks
+# 3. Parse a document — a local file is uploaded; a sample_… id or https:// URL is referenced
+bash scripts/parse.sh report.docx blocks
+bash scripts/parse.sh sample_docx_formatting markdown
 
-# 4. Estimate cost before parsing
+# 4. Estimate cost before parsing (no API key needed)
 bash scripts/estimate.sh report.pdf blocks
 
 # 5. Generate/convert a document
@@ -317,23 +318,25 @@ bash scripts/device-auth.sh
 | `/api/v1/capabilities` | GET | Full service contract |
 | `/api/v1/samples` | GET | Test files for verification |
 | `/api/v1/formats` | GET | Supported formats |
-| `/api/v1/pricing` | GET | Tier definitions + credit costs |
+| `/api/v1/pricing` | GET | Tier definitions and limits |
 | `/api/v1/health` | GET | Service status |
 | `/general/v0/general` | POST | Unstructured API drop-in |
 
 ## Parsing Documents
 
 ```bash
-# Named JSON parameters (preferred)
+# Upload the file — the API never reads a path on your disk (INPUT_NOT_FOUND)
 curl -X POST "$DOCPARSE_URL/api/v1/parse" \
-  -H "Content-Type: application/json" \
-  -d "{\"filepath\":\"report.docx\",\"outputFormat\":\"blocks\",\"apiKey\":\"$DOCPARSE_API_KEY\"}"
+  -H "X-API-Key: $DOCPARSE_API_KEY" \
+  -F "filepath=@report.docx" -F "outputFormat=blocks"
 ```
+
+JSON `filepath` is only for `sample_…` ids; use `sourceUrl` for an `https://` URL.
 
 Output formats: `blocks` (structured JSON), `markdown`, `html`, `a2ui`
 
-All formats return the same block types: Text, Heading, Table, Image, Audio,
-Video, List, Section, Change, Link, Comment.
+All formats return the same block types: `text`, `heading`, `table`, `image`,
+`audio`, `video`, `list`, `section`, `change`, `link`, `comment`.
 
 ## Converting / Generating Documents
 
@@ -342,13 +345,13 @@ JSON**, not as a binary body.
 
 ```bash
 # Upload a local file (the API cannot see your disk — this is the usual path)
-curl -X POST "$DOCPARSE_URL/api/v1/convert" \
-  -F "filepath=@report.md" -F "target=docx" -F "apiKey=$DOCPARSE_API_KEY"
+curl -X POST "$DOCPARSE_URL/api/v1/convert" -H "X-API-Key: $DOCPARSE_API_KEY" \
+  -F "filepath=@report.md" -F "target=docx"
 
-# Or reference a sample_id, an https:// URL, or a gs:// ref (Business tier)
-curl -X POST "$DOCPARSE_URL/api/v1/convert" \
+# Or reference a sample_id, an https:// URL (sourceUrl), or a gs:// ref (gcsRef, Business tier)
+curl -X POST "$DOCPARSE_URL/api/v1/convert" -H "X-API-Key: $DOCPARSE_API_KEY" \
   -H "Content-Type: application/json" \
-  -d "{\"filepath\":\"sample_docx_tables\",\"target\":\"html\",\"apiKey\":\"$DOCPARSE_API_KEY\"}"
+  -d '{"filepath":"sample_docx_tables","target":"html"}'
 ```
 
 Response — inside the serve-api envelope, like `/api/v1/parse`. Unwrap `result`
@@ -382,12 +385,12 @@ work. Anything unrecognised is a typed `UNSUPPORTED_TARGET_FORMAT` error.
 | `scripts/render.sh` | `bash scripts/render.sh <file> --output-dir <new-dir> [--compare <file>]` | Local rendering and visual comparison |
 | `scripts/audit.sh` | `bash scripts/audit.sh <file.docx> [--strict]` | Read-only local structural audit |
 | `scripts/health.sh` | `bash scripts/health.sh` | Check API health |
-| `scripts/parse.sh` | `bash scripts/parse.sh <filepath> [format]` | Parse a document |
+| `scripts/parse.sh` | `bash scripts/parse.sh <file\|sample_id\|url> [format]` | Parse a document (local files are uploaded) |
 | `scripts/convert.sh` | `bash scripts/convert.sh <input> <target> [out]` | Generate/convert a document |
-| `scripts/estimate.sh` | `bash scripts/estimate.sh <filepath> [format]` | Estimate cost |
+| `scripts/estimate.sh` | `bash scripts/estimate.sh <file\|sample_id> [format]` | Estimate cost (no key needed) |
 | `scripts/samples.sh` | `bash scripts/samples.sh` | List test files |
 | `scripts/capabilities.sh` | `bash scripts/capabilities.sh` | Full service contract |
-| `scripts/device-auth.sh` | `bash scripts/device-auth.sh` | Get API key via device flow |
+| `scripts/device-auth.sh` | `bash scripts/device-auth.sh` | Get an API key for the scripts (device flow) |
 
 ## Workflow: Parse a Document via the Hosted API
 
@@ -415,8 +418,8 @@ work. Anything unrecognised is a typed `UNSUPPORTED_TARGET_FORMAT` error.
 ## Workflow: Verify Integration
 
 1. **List samples**: `bash scripts/samples.sh`
-2. **Parse a test file**: `bash scripts/parse.sh data/test_files/sample.docx blocks`
-3. **Check the response** has `result` field with blocks array
+2. **Parse a test file**: `bash scripts/parse.sh sample_docx_formatting blocks`
+3. **Check the response** has `"status": "success"` and a `blocks` array (the script unwraps the `result` envelope)
 4. **Compare** response shape to the capability manifest's golden examples
 
 ## Error Codes
@@ -426,29 +429,37 @@ work. Anything unrecognised is a typed `UNSUPPORTED_TARGET_FORMAT` error.
 | `INPUT_NOT_FOUND` | No | Check file path, use `/api/v1/samples` for test files |
 | `UNSUPPORTED_FORMAT` | No | Check `/api/v1/formats` for supported types |
 | `UNSUPPORTED_TARGET_FORMAT` | No | Convert target must be one of html md qmd docx pptx xlsx odt odp ods |
-| `INVALID_API_KEY` | No | Check key format (dp_ + 32 hex chars) |
+| `INVALID_API_KEY` | No | Check key format (dp_ + 32 hex chars), or that it was not revoked |
 | `QUOTA_EXCEEDED` | After reset | Wait for daily reset or upgrade tier |
-| `AI_UNAVAILABLE` | Yes | Retry — AI backend temporarily down |
+| `FILE_TOO_LARGE` | No | Over the tier's size limit — use the local CLI, or Business GCS upload |
+| `WORKBOOK_TOO_COMPLEX` | No | XLSX over 250,000 cells or 1,000 merged ranges — split by sheet |
+| `TIER_UPGRADE_REQUIRED` | No | Feature needs a higher tier (e.g. GCS upload is Business) |
+| `AI_UNAVAILABLE` / `AI_PROVIDER_ERROR` | Yes | Retry — AI backend temporarily down |
+| `PDF_BACKEND_FAILED` | No | The chosen PDF backend failed; try another, or the local CLI |
 | `PARSE_FAILED` | Maybe | File may be corrupt |
+
+On `/mcp/connect/`, a missing or expired sign-in is an HTTP 401, which the
+client answers by starting OAuth — not an error code you handle.
 
 All errors include `suggested_fix` — a plain-text instruction you can act on directly.
 
-## Credit Costs
+## Metering
 
-| Format | Credits |
-|--------|---------|
-| Office (DOCX, PPTX, XLSX, ODT, ODP, ODS) | 1 |
-| Text (CSV, Markdown, HTML, EPUB) | 1 |
-| PDF | 3 |
-| Image (PNG, JPG, GIF, TIFF, WebP) | 3 |
+Every parse and every conversion counts as **one request** against the tier's
+monthly allowance, whatever the page count or output size. Formats the service
+classes as AI (PDF and images: PNG, JPG, GIF, BMP, WebP, TIFF) also count as
+**one AI request** against the smaller AI allowance. `mcpEstimate` /
+`/api/v1/estimate` tells you which applies (`counts_as_ai_request`) before you
+spend anything; `mcpFormats` / `/api/v1/pricing` has the live limits.
 
-Audio and video formats (WAV, MP3, MP4, …) are **self-host only** — the hosted
-API does not parse them, so they carry no hosted credit cost.
+| Tier | Price | Requests / month | AI requests / month | Max file |
+|------|-------|------------------|---------------------|----------|
+| Free | €0 | 1,000 | 50 | 10 MB |
+| Pro | €29 | 100,000 | 500 | 25 MB |
+| Business | €99 | 500,000 | 2,000 | 50 MB |
 
-Conversion is charged **per generated document**, on the same counters as parse
-— the cost is driven by the *source* format above, and output size does not
-affect it. Converting a 1-page Markdown file to DOCX costs the same as
-converting a 200-page one.
+Audio and video (WAV, MP3, MP4, …) are **self-host only**: the hosted API does
+not parse them.
 
 ## Reporting Issues & Feedback
 

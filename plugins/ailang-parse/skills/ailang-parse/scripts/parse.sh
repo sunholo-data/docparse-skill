@@ -11,7 +11,7 @@ output_format="${2:-blocks}"
 
 if [ -z "$filepath" ]; then
   echo "Usage: bash scripts/parse.sh <filepath> [output_format]"
-  echo "  filepath:      path to document (or sample_id from /api/v1/samples)"
+  echo "  filepath:      local file (uploaded), sample_id from /api/v1/samples, or https:// URL"
   echo "  output_format: blocks (default), markdown, html, a2ui"
   exit 1
 fi
@@ -22,9 +22,21 @@ if [ -z "$DOCPARSE_API_KEY" ]; then
   exit 1
 fi
 
-result=$(curl -s --max-time 60 -X POST "$DOCPARSE_URL/api/v1/parse" \
-  -H "Content-Type: application/json" \
-  -d "{\"filepath\":\"$filepath\",\"outputFormat\":\"$output_format\",\"apiKey\":\"$DOCPARSE_API_KEY\"}")
+# A local file must be UPLOADED: the hosted API reads only its own uploads and
+# sample ids, never a path on the caller's disk (it answers INPUT_NOT_FOUND).
+if [ -f "$filepath" ]; then
+  result=$(curl -s --max-time 120 -X POST "$DOCPARSE_URL/api/v1/parse" \
+    -H "X-API-Key: $DOCPARSE_API_KEY" \
+    -F "filepath=@${filepath}" -F "outputFormat=${output_format}")
+else
+  case "$filepath" in
+    https://*|http://*) field="sourceUrl" ;;
+    *)                  field="filepath"  ;;  # sample_id
+  esac
+  result=$(curl -s --max-time 120 -X POST "$DOCPARSE_URL/api/v1/parse" \
+    -H "Content-Type: application/json" -H "X-API-Key: $DOCPARSE_API_KEY" \
+    -d "{\"${field}\":\"${filepath}\",\"outputFormat\":\"${output_format}\"}")
+fi
 
 # Try to pretty-print the inner result
 echo "$result" | python3 -c "

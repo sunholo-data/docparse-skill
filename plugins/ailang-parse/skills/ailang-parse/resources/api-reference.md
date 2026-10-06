@@ -8,11 +8,19 @@ https://docparse.ailang.sunholo.com
 
 ## Authentication
 
-Parse endpoints require an API key passed as `apiKey` in the JSON body.
+Parse, convert and edit need a `dp_` API key: send it as an `X-API-Key` or
+`Authorization: Bearer` header (preferred — it stays out of logs and prompts), or
+as an `apiKey` body field. MCP clients on `/mcp/connect/` sign in with OAuth
+instead and never handle the key.
 
 Key format: `dp_` followed by 32 hex characters (e.g., `dp_a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6`).
 
-Discovery endpoints (health, formats, capabilities, samples, pricing, tools) are unauthenticated.
+Discovery endpoints (health, formats, capabilities, samples, pricing, tools) and
+`/api/v1/estimate` are unauthenticated.
+
+**The API never reads a path on your disk.** `filepath` is either a multipart
+upload (`-F "filepath=@report.docx"`) or a `sample_…` id from
+`/api/v1/samples`. A local path sent as JSON returns `INPUT_NOT_FOUND`.
 
 ## Response Envelope
 
@@ -40,47 +48,53 @@ The `result` field contains a JSON-encoded string. Parse it to get the actual da
 
 Parse a document into structured blocks.
 
-**Request (named params — preferred):**
-```json
-{
-  "filepath": "data/test_files/sample.docx",
-  "outputFormat": "blocks",
-  "apiKey": "dp_your_key_here"
-}
+**Request (upload a local file — the usual case):**
+```bash
+curl -X POST https://docparse.ailang.sunholo.com/api/v1/parse \
+  -H "X-API-Key: $DOCPARSE_API_KEY" \
+  -F "filepath=@report.docx" -F "outputFormat=blocks"
 ```
 
-**Request (legacy positional — still supported):**
-```json
-{
-  "args": ["data/test_files/sample.docx", "blocks"]
-}
+**Request (a sample, or a public/signed URL):**
+```bash
+curl -X POST https://docparse.ailang.sunholo.com/api/v1/parse \
+  -H "X-API-Key: $DOCPARSE_API_KEY" -H "Content-Type: application/json" \
+  -d '{"filepath": "sample_docx_formatting", "outputFormat": "blocks"}'
+# or: -d '{"sourceUrl": "https://example.com/report.pdf"}'
 ```
 
 **Parameters:**
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| filepath | string | yes | File path on server or sample_id |
+| filepath | string | one input | Multipart upload, or a `sample_…` id |
+| sourceUrl | string | one input | `https://` URL fetched by the server |
+| gcsRef | string | one input | `gs://` ref from `/api/v1/upload/url` (Business tier) |
 | outputFormat | string | no | `blocks` (default), `markdown`, `html`, `a2ui` |
-| apiKey | string | yes | API key with `dp_` prefix |
+| pdfBackend | string | no | `""` (server default, `pdftotext`), `pdftotext`, `ai`; `docling`/`liteparse` exist but the hosted 30s cap makes them unusable |
+| apiKey | string | if no header | `dp_` key, when not sent as a header |
 
-**Response (result field, decoded):**
+**Response (`blocks`, unwrapped)** — abridged from a real `sample_docx_formatting` parse:
 
 ```json
 {
+  "status": "success",
+  "filename": "challenge_formatting.docx",
+  "format": "docx",
   "blocks": [
-    {"type": "heading", "level": 1, "text": "Report Title"},
-    {"type": "text", "text": "Paragraph content..."},
-    {"type": "table", "rows": [["A1", "B1"], ["A2", "B2"]]},
-    {"type": "change", "change_type": "insertion", "author": "Jane", "text": "added text"}
+    {"type": "heading", "level": 1, "text": "Scientific Paper: Gene Expression Analysis"},
+    {"type": "text", "text": "The gene BRCA1 ...", "style": "Normal", "level": 0,
+     "runs": [{"text": "The gene "}, {"text": "BRCA1", "bold": true, "italic": true}]}
   ],
-  "metadata": {
-    "title": "Sample Document",
-    "format": "docx",
-    "pages": 3
-  }
+  "metadata": {"title": "", "author": "python-docx", "created": "2013-12-23T23:15:00Z",
+               "modified": "2013-12-23T23:15:00Z", "pageCount": 0},
+  "summary": {},
+  "warnings": []
 }
 ```
+
+Other block types: `table`, `list`, `image`, `section`, `change` (tracked
+insertion/deletion), `comment`, `link`, `audio`, `video`.
 
 ## POST /api/v1/convert
 
@@ -148,22 +162,25 @@ only.
 
 Estimate cost and latency before parsing.
 
+No API key needed.
+
 **Request:**
-```json
-{
-  "filepath": "report.docx",
-  "outputFormat": "blocks"
-}
+```bash
+curl -X POST https://docparse.ailang.sunholo.com/api/v1/estimate \
+  -F "filepath=@report.docx" -F "outputFormat=blocks"
+# or JSON with a sample id: -d '{"filepath": "sample_pdf", "outputFormat": "blocks"}'
 ```
 
-**Response:**
+**Response** (returned as-is, not in the `result` envelope):
 ```json
 {
-  "estimated_credits": 1,
-  "format": "docx",
+  "format": "zip-office",
+  "extension": "docx",
   "strategy": "deterministic",
   "ai_required": false,
-  "estimated_ms": 15
+  "counts_as_ai_request": false,
+  "estimated_ms": 15,
+  "note": "This format is parsed deterministically with zero AI cost."
 }
 ```
 
@@ -175,14 +192,10 @@ Full machine-readable service contract. Returns endpoints, schemas, auth require
 
 Test files with stable IDs. Use these to verify integration.
 
-```json
-{
-  "samples": [
-    {"id": "sample_docx_basic", "format": "docx", "path": "data/test_files/sample.docx"},
-    {"id": "sample_pdf", "format": "pdf", "path": "data/test_files/simple_text.pdf"}
-  ]
-}
-```
+26 samples, e.g. `sample_docx_formatting`, `sample_docx_tables`,
+`sample_docx_track_changes`, `sample_pptx_notes`, `sample_xlsx_merged`,
+`sample_markdown`, `sample_pdf`. Each entry carries `id`, `label`, `media_type`,
+`tags`, `expected_formats` and `ai_required`; pass the `id` as `filepath`.
 
 ## GET /api/v1/formats
 
@@ -190,7 +203,7 @@ Lists all supported input and output formats.
 
 ## GET /api/v1/pricing
 
-Machine-readable pricing tiers and credit costs.
+Machine-readable pricing tiers: monthly request and AI-request limits, file-size limits, and which formats count as AI.
 
 ## GET /api/v1/tools
 
@@ -199,24 +212,33 @@ Tool definitions for Claude, OpenAI, and MCP integration.
 ## POST /general/v0/general
 
 Unstructured.io API drop-in replacement. Returns element JSON in Unstructured format.
+Takes the key in Unstructured's `unstructured-api-key` header (or `X-API-Key`).
 
-```json
-{"args": ["data/test_files/sample.docx", "auto"]}
+```bash
+curl -X POST https://docparse.ailang.sunholo.com/general/v0/general \
+  -H "unstructured-api-key: $DOCPARSE_API_KEY" -F "filepath=@report.docx"
 ```
 
 ## POST /api/v1/auth/device
 
-Request device authorization code (RFC 8628). For headless agents.
+Request device authorization code (RFC 8628). For headless agents and scripts
+(`scripts/device-auth.sh` wraps the whole flow).
 
 ```json
-{"args": ["my-agent-label", "parse"]}
+{"label": "my-agent-label", "scope": "parse"}
 ```
 
 Companion endpoints: `POST /api/v1/auth/device/poll` (poll after starting the flow), `POST /api/v1/auth/device/inspect` (check a flow's status) and `POST /api/v1/auth/device/approve` (approve from the dashboard).
 
 ## POST /api/v1/upload/url
 
-Request a pre-authenticated GCS upload URL. **Business tier only** — bypasses the 32MB hosted request limit. Request `{"filename": "big.pdf", "mimeType": "application/pdf", "apiKey": "dp_..."}`, PUT the file bytes to the returned URL, then pass the returned `gcs_ref` to `POST /api/v1/parse`.
+Request a pre-authenticated GCS upload URL. **Business tier only** — bypasses the 32MB hosted request limit. Request `{"filename": "big.pdf", "mimeType": "application/pdf"}` with the key in a header, PUT the file bytes to the returned URL, then pass the returned `gcs_ref` as `gcsRef` to `POST /api/v1/parse`.
+
+## POST /api/v1/edit
+
+Parse an Office document, apply a JSON array of edit deltas, and return the
+modified blocks (`filepath` as a multipart upload, `deltas` as a JSON string;
+`""` round-trips). Office formats only. The MCP tool `editDocument` calls this.
 
 ## API Keys
 
@@ -233,6 +255,8 @@ Request a pre-authenticated GCS upload URL. **Business tier only** — bypasses 
 |----------|---------|
 | `POST /api/v1/requests/history` | List your past requests |
 | `POST /api/v1/requests/replay` | Replay a previous request by id |
+| `POST /api/v1/requests/delete` | Delete one stored request, or all |
+| `POST /api/v1/account/history` | Read or change whether requests are stored for replay |
 
 Every response's `meta.request_id` (see the envelope) is the replay key;
 `mcpParse`'s `requestId` parameter is reserved for this.

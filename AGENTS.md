@@ -24,7 +24,8 @@ The MCP tools are the **hosted** service: the document is uploaded. The local
 user which one you are about to use.
 
 Use the local CLI when the material is confidential, restricted, or the user
-asked to keep it offline; for files over 32MB; for audio/video; when a PDF needs
+asked to keep it offline; for files over the hosted limit (10 MB Free, 25 MB Pro,
+50 MB Business); for audio/video; when a PDF needs
 the `docling`/`liteparse` backends (the hosted API's 30s cap kills them); or for
 `--generate` (prompt-to-document, hosted has no equivalent). When in doubt about
 sensitivity, ask — do not upload by default.
@@ -89,11 +90,11 @@ Headless agents with no browser can use the agent surface `/mcp/` instead:
 
 ## Error Handling
 
-All errors include a `suggested_fix` field with plain-text instructions you can act on directly. Key error codes: `AUTH_REQUIRED`, `INVALID_API_KEY`, `QUOTA_EXCEEDED`, `AI_QUOTA_EXCEEDED`, `FILE_NOT_FOUND`, `FILE_TOO_LARGE`.
+All errors include a `suggested_fix` field with plain-text instructions you can act on directly. Key error codes: `INVALID_API_KEY`, `QUOTA_EXCEEDED`, `INPUT_NOT_FOUND` (a local path sent instead of an upload), `FILE_TOO_LARGE`, `WORKBOOK_TOO_COMPLEX`, `UNSUPPORTED_FORMAT`, `PARSE_FAILED`. On the agent surface `/mcp/` a missing key is `AUTH_REQUIRED`; on `/mcp/connect/` it is an HTTP 401 that the client answers with OAuth.
 
 ## Pricing
 
-Per-document pricing (not per-page). Free: 1,000 requests/month, 50 AI parses. Pro EUR 29/month: 100K requests, 500 AI. Business EUR 99/month: 500K requests, 2,000 AI.
+Per-document pricing (not per-page): each parse or conversion is one request; PDFs and images also count as one AI request. Free: 1,000 requests/month, 50 AI, 10 MB files. Pro EUR 29/month: 100K requests, 500 AI, 25 MB. Business EUR 99/month: 500K requests, 2,000 AI, 50 MB. Live limits: `mcpFormats` or `GET /api/v1/pricing`.
 
 ## API
 
