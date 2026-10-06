@@ -3,7 +3,7 @@
   "mcpServers": {
     "ailang-parse": {
       "type": "streamable-http",
-      "url": "https://docparse.ailang.sunholo.com/mcp/"
+      "url": "https://docparse.ailang.sunholo.com/mcp/connect/"
     }
   }
 }

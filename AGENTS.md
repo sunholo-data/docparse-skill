@@ -9,7 +9,7 @@ This repository is a plugin for AI coding assistants that provides universal doc
 
 ## What This Plugin Does
 
-When installed as a Claude plugin, it registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/` with 10 tools for document parsing, editing, generation, format conversion, cost estimation, authentication, file upload, and account management.
+When installed as a plugin (Claude, Codex, ChatGPT), it registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/connect/` with 8 tools for document parsing, editing, generation, format conversion, cost estimation, file upload, and account management. It signs in with OAuth.
 
 A standalone Codex or Claude skill symlink does not register MCP. Use the
 available local CLI or an explicitly configured hosted connection. The shared
@@ -56,22 +56,27 @@ content to an AI provider. Full reference:
 
 - **mcpFormats** — Call first. Returns all 17 input formats, 9 output formats, 26 test samples, pricing tiers, and service capabilities.
 - **mcpEstimate** — Predict cost and latency before parsing. Shows if AI is required. No auth needed.
-- **mcpParse** — Parse a document into structured blocks, Markdown, HTML, or A2UI. Pass `apiKey` for hosted mode.
+- **mcpParse** — Parse a document into structured blocks, Markdown, HTML, or A2UI.
 - **mcpConvert** — Generate a document: docx, pptx, xlsx, odt, odp, ods, html, md, qmd. `input` is a file path, sample_id, https:// URL, or gs:// ref (Business tier).
 - **editDocument** — Parse a document, apply JSON edit deltas, and return the modified blocks. Deterministic Office formats only.
 - **getUploadUrl** — Business tier only. Returns a pre-authenticated GCS upload URL to PUT large files, bypassing the 32MB request limit. Then pass the `gcs_ref` to `mcpParse`.
-- **mcpAuth** — Start RFC 8628 device authorization. Returns a URL for the user to approve.
-- **mcpAuthPoll** — Poll for auth completion. Returns API key on approval.
-- **mcpAccount** — `action:"status"` (default, quota/usage), `"keys"` (list keys with per-key usage), `"pricing"` (no auth required), `"usage"` (alias for keys).
+- **mcpAccount** — `action:"status"` (default, quota/usage), `"keys"` (list keys with per-key usage), `"pricing"` (no auth required), `"usage"` (alias for keys), `"history"` / `"history_on"` / `"history_off"`.
 - **submit_feedback** — Anonymous bug/feature/docs report (`title`, `body`, `category` = bug|feature|docs|limitation, `ailang_version` required; optional `package="sunholo/ailang_parse"` to route to the AILANG Parse inbox).
 
 ## Authentication Flow
 
-1. Try `mcpParse` — if you get `AUTH_REQUIRED`, the error includes `suggested_fix`
-2. Call `mcpAuth(label: "your-agent-name")` — returns `verification_url` and `user_code`
-3. Tell the user to open the URL and approve
-4. Poll with `mcpAuthPoll(deviceCode)` every 5 seconds until approved
-5. Use the returned `api_key` in all subsequent calls
+On `/mcp/connect/` (the plugin) sign-in is OAuth 2.1 and the **client** runs it: the first call
+to a tool that needs an account answers 401, the client opens a sign-in page, the user signs in
+with Google or GitHub and approves, and the client retries with its token. Tools take no
+`apiKey` argument. Never ask the user to paste a key into the chat.
+
+Headless agents with no browser can use the agent surface `/mcp/` instead:
+
+1. Call `mcpAuth(label: "your-agent-name")` — returns `verification_url` and `user_code`
+2. Tell the user to open the URL and approve
+3. Poll with `mcpAuthPoll(deviceCode)` every 5 seconds until approved
+4. Send the returned `api_key` as an `Authorization: Bearer` or `X-API-Key` header (or as the
+   `apiKey` argument if the client cannot set headers)
 
 ## Supported Formats
 
@@ -93,5 +98,5 @@ Per-document pricing (not per-page). Free: 1,000 requests/month, 50 AI parses. P
 ## API
 
 Base URL: `https://docparse.ailang.sunholo.com`
-MCP endpoint: `https://docparse.ailang.sunholo.com/mcp/`
+MCP endpoint: `https://docparse.ailang.sunholo.com/mcp/connect/` (OAuth; agent surface with device auth: `/mcp/`)
 Documentation: `https://www.sunholo.com/ailang-parse/`

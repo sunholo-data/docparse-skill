@@ -11,6 +11,6 @@ dependencies:
   tools:
     - type: "mcp"
       value: "ailang-parse"
-      description: "AILANG Parse hosted MCP server"
+      description: "AILANG Parse hosted MCP server (OAuth sign-in)"
       transport: "streamable_http"
-      url: "https://docparse.ailang.sunholo.com/mcp/"
+      url: "https://docparse.ailang.sunholo.com/mcp/connect/"

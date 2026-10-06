@@ -75,10 +75,12 @@ A skill symlink does **not** install an MCP server. The local CLI works without
 one. For optional hosted access, register the connection separately:
 
 ```bash
-codex mcp add ailang-parse --url https://docparse.ailang.sunholo.com/mcp/
+codex mcp add ailang-parse --url https://docparse.ailang.sunholo.com/mcp/connect/
 ```
 
-Use the service's device-auth tools if its API requests a key. Installing a
+Codex starts the OAuth sign-in when it adds the server (or later with
+`codex mcp login ailang-parse`): sign in with Google or GitHub in the browser
+page and approve. Installing a
 skill does not copy Claude credentials or hooks into Codex. See
 [Codex skills](https://learn.chatgpt.com/docs/build-skills) and
 [MCP configuration](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
@@ -151,12 +153,14 @@ This plugin registers an **MCP server** and a **skill** for document parsing and
 | `getUploadUrl` | Pre-authenticated GCS upload URL for large files (Business tier) |
 | `mcpFormats` | Discover formats, samples, pricing, capabilities |
 | `mcpEstimate` | Predict cost/latency before parsing |
-| `mcpAuth` | Get an API key via device auth (RFC 8628) |
-| `mcpAuthPoll` | Poll for auth completion |
-| `mcpAccount` | View status, keys/usage, or pricing (no auth for pricing) |
+| `mcpAccount` | View status, keys/usage, request-history setting, or pricing (no auth for pricing) |
 | `submit_feedback` | Report a bug / feature / docs gap to the maintainers |
 
-Just ask Claude to parse or produce a document — the MCP tools handle everything automatically, including authentication.
+Just ask Claude to parse or produce a document. The plugin connects to
+`https://docparse.ailang.sunholo.com/mcp/connect/`, which signs in with OAuth:
+the first time a tool needs your account, Claude opens a sign-in page (Google or
+GitHub) — in Claude Code, `/mcp` → **Authenticate**. Claude keeps the token; you
+never paste a key.
 
 ## Quick Start
 
@@ -182,18 +186,25 @@ tables, inline formatting, links and embedded images all carry through. Headers,
 footers, comments and tracked changes have no Markdown syntax, so those survive
 only when converting *from* a document that already has them.
 
-No manual API key setup needed. If auth is required, Claude will walk you through the device auth flow.
+No manual API key setup is needed for the plugin: sign-in is OAuth. The key the
+app receives is listed on your
+[dashboard](https://www.sunholo.com/docparse/dashboard.html) as `oauth: …`, and
+you can revoke it there.
 
-## Manual API Key (Optional)
+## Manual API Key (scripts and REST only)
+
+The shell scripts and the REST API take a `dp_` key:
 
 ```bash
-# Set your API key if you already have one
 export DOCPARSE_API_KEY="dp_your_key_here"
 ```
 
-Or get one via:
-1. [AILANG Parse Dashboard](https://www.sunholo.com/docparse/dashboard.html) — sign in with Google
-2. Device auth flow — Claude handles this automatically via `mcpAuth`
+Get one from the [dashboard](https://www.sunholo.com/docparse/dashboard.html)
+(sign in with Google or GitHub) or with `scripts/device-auth.sh`. Headless MCP
+clients without a browser can use the agent surface
+`https://docparse.ailang.sunholo.com/mcp/`, which has the device-auth tools
+(`mcpAuth`, `mcpAuthPoll`) and takes the key as an `Authorization: Bearer` or
+`X-API-Key` header.
 
 ## Supported Formats
 

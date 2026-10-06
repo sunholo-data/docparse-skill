@@ -3,7 +3,7 @@
 A [pi](https://github.com/badlogic/pi-mono) extension — the pi-native
 equivalent of the `ailang-parse` Claude plugin in this repo. pi does not load
 MCP servers, so instead of pointing at the hosted MCP endpoint
-(`https://docparse.ailang.sunholo.com/mcp/`) it registers **native pi tools**
+(`https://docparse.ailang.sunholo.com/mcp/connect/`) it registers **native pi tools**
 that call the same backend:
 
 | Transport | What | Auth | Best for |
@@ -11,12 +11,12 @@ that call the same backend:
 | **CLI** | local `docparse` binary (AILANG Parse CLI) | local AI keys (env) | Local files, all formats (Office/ODF/EPUB/EML/TeX/images/**audio/video** — self-host-only on the hosted API), deterministic PDFs, scanned PDFs via `pdf_backend: "ai"`, convert/generate |
 | **Hosted API** | `https://docparse.ailang.sunholo.com` REST `/api/v1/*` | `dp_…` API key (device flow) | URL parsing (`url` param), no local install at all, tier-metered quota |
 
-Claude Code users get the full 10-tool MCP surface (`mcpParse`, `mcpConvert`,
-`editDocument`, `getUploadUrl`, `mcpFormats`, `mcpEstimate`, `mcpAuth`,
-`mcpAuthPoll`, `mcpAccount`, `submit_feedback`) via the plugin in
-`plugins/ailang-parse/`. pi users get the parse/convert/status subset via
-this extension; the device-flow auth is shared (same
-`~/.config/ailang-parse/credentials.json`).
+Claude Code and Codex users get the 8-tool MCP surface (`mcpParse`, `mcpConvert`,
+`editDocument`, `getUploadUrl`, `mcpFormats`, `mcpEstimate`, `mcpAccount`,
+`submit_feedback`) via the plugin in `plugins/ailang-parse/`, signed in with
+OAuth by the client. pi users get the parse/convert/status subset via this
+extension, which signs in with the device flow; that key is shared with the
+SDKs and CLI (same `~/.config/ailang-parse/credentials.json`).
 
 ## Install (global)
 
