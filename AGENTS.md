@@ -94,7 +94,7 @@ All errors include a `suggested_fix` field with plain-text instructions you can 
 
 ## Pricing
 
-Per-document pricing (not per-page): each parse or conversion is one request; PDFs and images also count as one AI request. Free: 1,000 requests/month, 50 AI, 10 MB files. Pro EUR 29/month: 100K requests, 500 AI, 25 MB. Business EUR 99/month: 500K requests, 2,000 AI, 50 MB. Live limits: `mcpFormats` or `GET /api/v1/pricing`.
+Per-document pricing (not per-page): each parse or conversion is one request; images, and PDFs parsed with `pdfBackend="ai"`, also count as one AI request. Free: 1,000 requests/month, 50 AI, 10 MB files. Pro EUR 29/month: 100K requests, 500 AI, 25 MB. Business EUR 99/month: 500K requests, 2,000 AI, 50 MB. Live limits: `mcpFormats` or `GET /api/v1/pricing`.
 
 ## API
 

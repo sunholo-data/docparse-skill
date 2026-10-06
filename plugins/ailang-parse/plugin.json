@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "ailang-parse",
-  "version": "0.16.1",
+  "version": "0.17.0",
   "description": "AILANG Parse — universal document parsing and generation. Parse 17 input formats into structured blocks and generate DOCX, PPTX, XLSX, ODT, ODP, ODS, HTML, Markdown and Quarto — via the hosted MCP server, or the local docparse CLI when documents must not leave the machine.",
   "author": {
     "name": "Holosun ApS",

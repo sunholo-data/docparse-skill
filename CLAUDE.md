@@ -98,11 +98,11 @@ bash plugins/ailang-parse/skills/ailang-parse/scripts/device-auth.sh    # Get an
 
 **Parse outputs:** blocks, markdown, html, a2ui
 
-Office formats are deterministic (5-50ms). On the hosted API, PDF and images require AI; the local CLI parses PDFs deterministically with `pdftotext`. Audio/video formats (WAV, MP3, MP4, …) are **local CLI only** — not on the hosted API.
+Office formats are deterministic (5-50ms). On the hosted API, images use AI; PDFs are parsed with `pdftotext` (no AI) unless you ask for `pdfBackend="ai"`, e.g. for a scanned PDF. Audio/video formats (WAV, MP3, MP4, …) are **local CLI only** — not on the hosted API.
 
 ## Pricing
 
-Per-document, not per-page: one request per parse or conversion, plus one AI request for PDFs and images. Free: 1,000/month + 50 AI, 10 MB files. Pro EUR 29: 100K + 500 AI, 25 MB. Business EUR 99: 500K + 2,000 AI, 50 MB.
+Per-document, not per-page: one request per parse or conversion, plus one AI request for images and for PDFs parsed with `pdfBackend="ai"`. Free: 1,000/month + 50 AI, 10 MB files. Pro EUR 29: 100K + 500 AI, 25 MB. Business EUR 99: 500K + 2,000 AI, 50 MB.
 
 ## API Base URL
 
