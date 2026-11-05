@@ -44,25 +44,33 @@ Install and the full reference:
 
 ## MCP Server
 
-This plugin registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/connect/`, which signs in with OAuth and provides 8 tools:
+This plugin registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/connect/`, which signs in with OAuth and provides 9 tools (live list, 2026-11-05):
 
 | Tool | Purpose | Sign-in Required |
 |------|---------|---------------|
-| `mcpParse` | Parse any document into blocks, Markdown, HTML, or A2UI | Hosted: yes |
-| `mcpConvert` | Generate a document — docx, pptx, xlsx, odt, odp, ods, html, md, qmd | Hosted: yes |
-| `editDocument` | Parse, apply JSON edit deltas, return modified blocks (Office formats only) | Hosted: yes |
-| `getUploadUrl` | Pre-authenticated GCS upload URL for files > 32MB | Hosted: yes, Business tier |
-| `mcpFormats` | Discover formats, 26 samples, pricing tiers, capabilities | No |
+| `mcpParse` | Parse any document into blocks, Markdown, HTML, A2UI, or a short `summary`; large results come in parts (`page.nextCursor` → `cursor`) | Yes |
+| `mcpConvert` | Generate a document — docx, pptx, xlsx, odt, odp, ods, html, md, qmd; returns a one-hour `download_url` | Yes |
+| `editDocument` | Parse, apply JSON edit deltas, return modified blocks (Office formats only) | Yes |
+| `createUpload` | One-time upload links (`count` 1..20), each with a `curl` line, for files in your sandbox or workspace | Yes |
+| `uploadDocument` | Shows the upload card so the user picks a file; gives you its `fileRef` | Yes |
+| `mcpAccount` | `status` (default), `keys` (`usage` alias), `history`, `history_on`, `history_off` | Yes |
+| `mcpFormats` | Formats, how to send a document, 26 samples | No |
 | `mcpEstimate` | Predict cost/latency before parsing | No |
-| `mcpAccount` | `status` (default), `keys`, `usage`, `pricing`, `history`, `history_on`, `history_off` | Yes (except `action:"pricing"`) |
 | `submit_feedback` | Anonymous bug/feature/docs report; `package="sunholo/ailang_parse"` routes to the AILANG Parse inbox | No |
+
+`uploadViaHost` also appears; only the upload card calls it.
 
 ## Recommended Workflow
 
-1. Call `mcpFormats` first to discover capabilities, samples, and pricing
+1. Call `mcpFormats` first to discover capabilities and samples
 2. Call `mcpEstimate` to check if AI is needed and predict cost
-3. Call `mcpParse` or `mcpConvert` with the document
-4. If the client is not signed in, the first account tool call triggers the OAuth sign-in in the client; retry after the user approves
+3. Get the document in: a file in your sandbox → `createUpload` + its `curl` line; the user wants
+   to pick a file, or curl has no network → `uploadDocument`; a public link → `filepath`/`input`;
+   ChatGPT → `file`. Never parse the file yourself and present that as the tool's result.
+4. Call `mcpParse` (`outputFormat: "summary"` first for a large document, then follow
+   `page.nextCursor`) or `mcpConvert` with the `fileRef`. A `fileRef` is reusable by the same user
+   for 30 minutes after its first use.
+5. If the client is not signed in, the first account tool call triggers the OAuth sign-in in the client; retry after the user approves
 
 ## Authentication
 
@@ -70,7 +78,7 @@ This plugin registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/
   `docparse.ailang.sunholo.com`; the user signs in with Google or GitHub and approves. The client
   keeps the token; tools take no `apiKey` argument. The app's key shows on the
   [dashboard](https://www.sunholo.com/docparse/dashboard.html) labelled `oauth: …` and can be revoked there.
-- **No sign-in needed** for `mcpFormats`, `mcpEstimate`, and `mcpAccount(action:"pricing")`
+- **No sign-in needed** for `mcpFormats`, `mcpEstimate` and `submit_feedback`; live prices: `GET /api/v1/pricing`
 - **Scripts and REST**: a `dp_` API key (e.g. `dp_a1b2c3d4...`) from the dashboard or
   `scripts/device-auth.sh`, in `DOCPARSE_API_KEY`. Never paste a key into the chat.
 - **Headless agents without a browser**: the agent surface `https://docparse.ailang.sunholo.com/mcp/`
@@ -96,7 +104,7 @@ bash plugins/ailang-parse/skills/ailang-parse/scripts/device-auth.sh    # Get an
 
 **Output (9):** DOCX, PPTX, XLSX, ODT, ODP, ODS, HTML, Markdown, QMD (Quarto)
 
-**Parse outputs:** blocks, markdown, html, a2ui
+**Parse outputs:** blocks, markdown, html, a2ui, summary
 
 Office formats are deterministic (5-50ms). On the hosted API, images use AI; PDFs are parsed with `pdftotext` (no AI) unless you ask for `pdfBackend="ai"`, e.g. for a scanned PDF. Audio/video formats (WAV, MP3, MP4, …) are **local CLI only** — not on the hosted API.
 

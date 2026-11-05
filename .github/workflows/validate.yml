@@ -69,6 +69,11 @@ jobs:
           npm i --no-save ajv@8 ajv-formats@3
           node scripts/validate-agent-plugins.mjs
 
+      # The portal ZIP swaps in openai-submission/mcp.json (CIMD auth); prove
+      # it builds and carries both manifests.
+      - name: Build OpenAI submission ZIP
+        run: bash scripts/build-openai-submission.sh
+
       # Same "validates but doesn't load" guard as the Claude job: install the
       # plugin through the Codex CLI from this checkout and assert both the
       # plugin and its MCP server register. No auth needed for install.
