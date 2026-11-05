@@ -100,14 +100,20 @@ uses and does not upload a document by accident.
 
 | Tool | Purpose |
 |------|---------|
-| `mcpParse` | Parse any document into blocks, Markdown, HTML, or A2UI |
-| `mcpConvert` | Generate a document — docx, pptx, xlsx, odt, odp, ods, html, md, qmd |
+| `mcpParse` | Parse any document into blocks, Markdown, HTML, A2UI, or a short `summary`; long results come in parts (`page.nextCursor`) |
+| `mcpConvert` | Generate a document — docx, pptx, xlsx, odt, odp, ods, html, md, qmd — with a one-hour download link |
 | `editDocument` | Parse a document, apply JSON edit deltas, return modified blocks (Office formats only) |
-| `getUploadUrl` | Pre-authenticated GCS upload URL for large files (Business tier) |
-| `mcpFormats` | Discover formats, samples, pricing, capabilities (no sign-in) |
+| `createUpload` | One-time upload links with a `curl` line, for files in a sandbox or workspace (Claude Code, Codex) |
+| `uploadDocument` | An upload card in the chat (claude.ai and other MCP Apps hosts): the user picks the file |
+| `mcpFormats` | Discover formats, samples and how to send a document (no sign-in) |
 | `mcpEstimate` | Predict cost/latency before parsing (no sign-in) |
-| `mcpAccount` | Status, keys and usage, request-history setting, or pricing |
+| `mcpAccount` | Plan, usage, keys and the request-history setting |
 | `submit_feedback` | Report a bug / feature / docs gap to the maintainers |
+
+Uploaded files come back as a `fileRef` that the same user can reuse for 30
+minutes after its first use; in ChatGPT the attached file is passed directly
+(`file`, via `openai/fileParams`). Parse acts only on the files you or the
+assistant explicitly pass to a tool.
 
 Plus the **skill**: when to use the local CLI vs the hosted API, how to author
 documents (writing quality, templates, verification), and wrapper scripts.
@@ -155,6 +161,21 @@ use the agent surface `https://docparse.ailang.sunholo.com/mcp/`, which adds the
 device-auth tools (`mcpAuth`, `mcpAuthPoll`) and takes the key as an
 `Authorization: Bearer` or `X-API-Key` header. Endpoint reference:
 [`resources/api-reference.md`](plugins/ailang-parse/skills/ailang-parse/resources/api-reference.md).
+
+## Submitting to the OpenAI plugin directory
+
+The OpenAI portal reads authentication from the package's `mcp.json`, under
+`extensions["com.openai"].auth`. That block lives in
+[`openai-submission/mcp.json`](openai-submission/mcp.json) and declares OAuth with
+CIMD client registration (`"type": "mixed"`, because `mcpFormats`, `mcpEstimate`
+and `submit_feedback` need no sign-in; `"client": {"mode": "cimd"}`; no client ID,
+no secret, no headers). It is not in `plugins/ailang-parse/mcp.json` because the
+Codex CLI drops an MCP server whose entry carries `extensions`. Build the ZIP to
+upload with:
+
+```bash
+bash scripts/build-openai-submission.sh   # -> dist/ailang-parse-<version>-openai.zip
+```
 
 ## Other setups
 

@@ -9,7 +9,7 @@ This repository is a plugin for AI coding assistants that provides universal doc
 
 ## What This Plugin Does
 
-When installed as a plugin (Claude, Codex, ChatGPT), it registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/connect/` with 8 tools for document parsing, editing, generation, format conversion, cost estimation, file upload, and account management. It signs in with OAuth.
+When installed as a plugin (Claude, Codex, ChatGPT), it registers an MCP server at `https://docparse.ailang.sunholo.com/mcp/connect/` with 9 tools for document parsing, editing, generation, format conversion, cost estimation, file upload, and account management (plus `uploadViaHost`, which only the upload card calls). It signs in with OAuth.
 
 A standalone Codex or Claude skill symlink does not register MCP. Use the
 available local CLI or an explicitly configured hosted connection. The shared
@@ -55,14 +55,27 @@ content to an AI provider. Full reference:
 
 ## Available MCP Tools
 
-- **mcpFormats** — Call first. Returns all 17 input formats, 9 output formats, 26 test samples, pricing tiers, and service capabilities.
-- **mcpEstimate** — Predict cost and latency before parsing. Shows if AI is required. No auth needed.
-- **mcpParse** — Parse a document into structured blocks, Markdown, HTML, or A2UI.
-- **mcpConvert** — Generate a document: docx, pptx, xlsx, odt, odp, ods, html, md, qmd. `input` is a file path, sample_id, https:// URL, or gs:// ref (Business tier).
+Live list on `/mcp/connect/` (2026-11-05). Always re-read `tools/list` when connected.
+
+- **mcpFormats** — Call first. Formats, how to send a document, 26 sample documents. No sign-in.
+- **mcpEstimate** — Predict cost and latency before parsing. Shows if AI is required. No sign-in.
+- **mcpParse** — Parse a document into structured blocks, Markdown, HTML, A2UI, or `summary` (counts, first 50 headings, warnings: a few KB). Large results come in parts: follow `page.nextCursor` with `cursor`; `maxChars` is a string of digits (`"2000"`..`"120000"`, default `"80000"`). `pdfBackend: "ai"` for a scanned PDF (`PDF_TEXT_LAYER_SPARSE`).
+- **mcpConvert** — Generate a document: docx, pptx, xlsx, odt, odp, ods, html, md, qmd. Returns `download_url`, valid for one hour. `input` is an https:// URL or a sample id.
 - **editDocument** — Parse a document, apply JSON edit deltas, and return the modified blocks. Deterministic Office formats only.
-- **getUploadUrl** — Business tier only. Returns a pre-authenticated GCS upload URL to PUT large files, bypassing the 32MB request limit. Then pass the `gcs_ref` to `mcpParse`.
-- **mcpAccount** — `action:"status"` (default, quota/usage), `"keys"` (list keys with per-key usage), `"pricing"` (no auth required), `"usage"` (alias for keys), `"history"` / `"history_on"` / `"history_off"`.
+- **createUpload** — One-time upload links for files in your sandbox or workspace: one token PER FILE (`count` 1..20), each with a `curl` line; the receipt prints a `fileRef`. Tokens work once, for 10 minutes.
+- **uploadDocument** — Shows the AILANG Parse upload card (MCP Apps hosts such as claude.ai): the user picks the file and you get its `fileRef`. Use it when the user wants to pick a file or `createUpload`'s curl fails with a network error.
+- **mcpAccount** — `action:"status"` (default, plan/usage/remaining), `"keys"` (`"usage"` is an alias), `"history"` / `"history_on"` / `"history_off"`.
 - **submit_feedback** — Anonymous bug/feature/docs report (`title`, `body`, `category` = bug|feature|docs|limitation, `ailang_version` required; optional `package="sunholo/ailang_parse"` to route to the AILANG Parse inbox).
+
+`uploadViaHost` is in the list too; only the upload card calls it.
+
+### Giving a tool the document
+
+`mcpParse`, `mcpConvert` and `editDocument` take ONE of: `fileRef` (from `createUpload` or
+`uploadDocument`), `file` (ChatGPT fills it in through `openai/fileParams`), an https:// URL or
+sample id (`filepath`, or `input` on `mcpConvert`), or `content` + `filename`. A `fileRef` can be
+reused by the same user for 30 minutes after its first use, then it is deleted. Never parse the
+file yourself and present that as the tool's result: if the file cannot be sent, tell the user.
 
 ## Authentication Flow
 

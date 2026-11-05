@@ -43,7 +43,7 @@ the difference is where the document goes.
 | Where the document goes | deterministic backends stay on the machine; AI backends may send content | **uploaded to the cloud service** |
 | Setup | one `curl \| sh` (0.40.0+) | connected MCP server or API scripts |
 | Account / quota | none | OAuth sign-in (MCP) or `dp_` key (scripts); counts against the tier |
-| File size | unlimited | 10 MB Free, 25 MB Pro, 50 MB Business (over 32 MB only via Business GCS upload) |
+| File size | unlimited | 10 MB Free, 25 MB Pro, 50 MB Business (over 32 MB only via the Business REST GCS upload) |
 | Audio / video | supported | **rejected** — self-host only |
 | Slow PDF backends (`docling`, `liteparse`) | up to 20 min | unusable — hard 30s cap |
 | AI generation from a prompt | `--generate` | not available |
@@ -156,34 +156,66 @@ A standalone skill link does not. It signs in with **OAuth**: the first call to 
 tool that needs an account makes the client (Claude, Codex, ChatGPT) open a
 sign-in page; the user signs in with Google or GitHub and approves, and the
 client holds the token from then on. Tools take **no `apiKey` argument** there.
-When connected, discover the actual tool names and schemas; the service exposes
-these capabilities:
+When connected, discover the actual tool names and schemas (the list below
+matches the live server on 2026-11-05):
 
-| Tool | Purpose |
-|------|---------|
-| `mcpParse` | Parse any document into blocks, Markdown, HTML, or A2UI |
-| `mcpConvert` | **Generate** a document — converts any input into docx, pptx, xlsx, odt, odp, ods, html, md, or qmd |
-| `editDocument` | Parse a document, apply JSON edit deltas, return the modified blocks (Office formats only) |
-| `getUploadUrl` | Pre-authenticated GCS upload URL for files over the 32MB hosted limit (**Business tier only**) |
-| `mcpFormats` | Discover formats, samples, pricing tiers, capabilities |
-| `mcpEstimate` | Predict cost/latency before parsing |
-| `mcpAccount` | `action`: `status` (default — tier/quota/usage), `keys` (list keys + per-key usage), `usage` (alias for keys), `pricing` (no auth), `history` / `history_on` / `history_off` |
-| `submit_feedback` | Report a bug / feature / docs gap to the maintainers |
+| Tool | Purpose | Sign-in |
+|------|---------|---------|
+| `mcpParse` | Parse a document into blocks, Markdown, HTML, A2UI, or a short `summary` | yes |
+| `mcpConvert` | **Generate** a document: docx, pptx, xlsx, odt, odp, ods, html, md, qmd; returns a one-hour `download_url` | yes |
+| `editDocument` | Parse a document, apply JSON edit deltas, return the modified blocks (Office formats only) | yes |
+| `createUpload` | One-time upload links (`count` 1..20) with a `curl` line, for files in your sandbox or workspace | yes |
+| `uploadDocument` | Show the AILANG Parse upload card so the user picks a file (claude.ai web/Desktop, MCP Apps hosts) | yes |
+| `mcpAccount` | `action`: `status` (default), `keys` (`usage` is an alias), `history`, `history_on`, `history_off` | yes |
+| `mcpFormats` | Formats, how to send a document, 26 sample documents | no |
+| `mcpEstimate` | Predict cost/latency before parsing | no |
+| `submit_feedback` | Report a bug / feature / docs gap to the maintainers | no |
+
+`uploadViaHost` also appears in the list: only the upload card calls it, never call it yourself.
 
 **Giving a tool the user's document** (`mcpParse`, `mcpConvert`, `editDocument`): pass ONE of
-- `content` + `filename`: the document itself. Text formats (Markdown, HTML, CSV) as plain
-  text; binary files (DOCX, PDF, PPTX, XLSX, ...) base64-encoded with `contentEncoding="base64"`.
+- `fileRef`: a file the user uploaded (`mcp-file://docparse/file_<32 hex>`), from `createUpload` or `uploadDocument`;
+- `file`: in ChatGPT, the file the user attached (ChatGPT fills it in through `openai/fileParams`);
+- an `https://` URL of a publicly reachable document (`filepath`; `input` on `mcpConvert`);
+- a sample id from `mcpFormats` (`sample_docx_formatting`);
+- `content` + `filename`: short text (Markdown, HTML, CSV) as plain text. `mcpConvert` and
+  `editDocument` also take a small binary file base64-encoded with `contentEncoding="base64"`.
   The filename's extension picks the parser (`notes.md`, `report.docx`).
-- an `https://` URL of a publicly reachable document (`filepath` / `input`);
-- a sample id from `mcpFormats` (`sample_docx_formatting`).
+
+**Which way to send a file**:
+- A file in your sandbox or workspace (Claude Code, Codex, a code sandbox): call `createUpload`
+  (one token PER FILE; `count` for several), run each descriptor's `curl` line where the file is
+  (`curl -sS -F token=... -F file=@<path> <upload url>`, replace `<path>`), and pass the
+  `fileRef` from the printed receipt. A token works once, for 10 minutes.
+- `curl` fails with a network error, or the user wants to pick a file: call `uploadDocument`.
+  The user chooses the file in the card, which uploads it and gives you its `fileRef`. The card
+  parses; it does not convert or edit.
+- A public `https://` link: `filepath` / `input`. In ChatGPT: `file`.
+- **Never parse the file yourself** (your own script, or your own reading of it) and present that
+  as the tool's result. If the file cannot be sent, tell the user.
+
+**fileRef reuse**: after its first use the same user can use a `fileRef` again for **30 minutes**
+(more parts, another format), never more than an hour after the upload; then it is deleted.
+Another account's `fileRef` is refused.
+
+**Large documents come in parts**: when an `mcpParse` result has `page.nextCursor`, call
+`mcpParse` again with the same `fileRef`/`filepath` and `cursor=<nextCursor>`, and read every part
+before answering about the whole document. `maxChars` sets the part size as a **string of
+digits** (default `"80000"`, `"2000"`..`"120000"`). `outputFormat: "summary"` (counts, the first 50
+headings, warnings: a few KB) is the cheap first look when a document may be large.
+
+**Scanned PDFs**: if a result says `PDF_TEXT_LAYER_SPARSE`, retry with `pdfBackend: "ai"`. Each
+page is read by an AI model (about 5 seconds a page) and the call counts as an AI request. Pass
+the same `pdfBackend` on every `cursor` call.
 
 To create a document, write Markdown and send it to `mcpConvert` as `content` with
 `filename: "notes.md"`. The result carries **`download_url`**, a link to the generated file
 valid for one hour: give it to the user. (It also carries the file as base64 in `content`.)
+Leave `outputPath` empty: the server cannot write to your filesystem.
 
 **Passing parameters**: only the parameters marked required in a tool's schema are needed; everything else is optional.
 
-**Recommended workflow**: Call `mcpFormats` first to discover capabilities, then `mcpEstimate` to check cost, then `mcpParse` or `mcpConvert`. `mcpFormats` and `mcpEstimate` need no sign-in.
+**Recommended workflow**: `mcpFormats` to discover capabilities, `mcpEstimate` to check cost, get the document in (above), `mcpParse` with `outputFormat: "summary"` for a large one, then the full parse (following `page.nextCursor`) or `mcpConvert`. `mcpFormats` and `mcpEstimate` need no sign-in.
 
 **First run / not signed in**: just call the tool. If the client is not signed in yet, the server answers 401 and the client starts the OAuth sign-in itself; retry once the user has approved. Never ask the user to paste an API key into the chat.
 
@@ -214,7 +246,7 @@ For the hosted path, use
 `bash "$DOCPARSE_SKILL_DIR/scripts/convert.sh" report.md docx ./output/report.docx`.
 Over MCP, send the Markdown to `mcpConvert` as `content` with `filename: "report.md"` and give
 the user the returned `download_url`. A hosted server cannot read a path on the user's
-machine: send the content itself, a public link, or use the upload script.
+machine: send the content itself, a public link, a `fileRef` from `createUpload` / `uploadDocument`, or use the upload script.
 
 **What survives Markdown → any output format:**
 
@@ -242,7 +274,7 @@ document authored from a prompt, write the Markdown yourself and convert it.
 
 ## Editing Documents (deltas)
 
-`editDocument(filepath, deltas)` parses a document, applies a JSON array
+`editDocument(fileRef | file | filepath | content, deltas)` parses a document, applies a JSON array
 of edit deltas, and returns the modified blocks — same schema as `mcpParse` with
 `outputFormat="blocks"`. Pass `deltas=""` for a round-trip (parse + unchanged
 blocks back).
@@ -254,9 +286,10 @@ blocks back).
 
 ## Uploading Large Files
 
-`getUploadUrl(filename, mimeType)` returns a pre-authenticated GCS URL
-(**Business tier only**). PUT the file bytes to that URL, then pass the returned
-`gcs_ref` to `mcpParse`. This bypasses the 32MB hosted request limit.
+Over MCP, use `createUpload` or `uploadDocument` (above); the hosted request limit is 32 MB.
+For REST callers on the Business tier, `POST /api/v1/upload/url` returns a pre-authenticated GCS
+URL: PUT the file bytes to it, then pass the returned `gcs_ref` as `gcsRef` to
+`POST /api/v1/parse` (see [API reference](resources/api-reference.md)).
 
 ## Shell Scripts (hosted API, no MCP)
 
