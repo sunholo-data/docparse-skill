@@ -24,6 +24,25 @@ trap 'rm -rf "$STAGE"' EXIT
 # (.claude-plugin/) and Codex (.mcp.json) manifests are left out of the ZIP.
 cp -R "$PLUGIN"/plugin.json "$PLUGIN"/skills "$PLUGIN"/assets "$STAGE"/
 cp openai-submission/mcp.json "$STAGE"/mcp.json
+# Review metadata (the 5 positive + 3 negative test cases, commerce: false)
+# goes only into the ZIP's plugin.json, at extensions["com.openai"].review: the
+# installable plugin.json stays free of submission-only fields. The demo video
+# is required for MCP review; pass its reviewer-accessible URL as
+# DEMO_RECORDING_URL to include it (otherwise enter it in the portal).
+# Test credentials and reviewer instructions are refused in the ZIP: they go
+# in the portal's Review details form.
+python3 -I - "$STAGE/plugin.json" openai-submission/review.json "${DEMO_RECORDING_URL:-}" <<'PY'
+import json, sys
+plugin_path, review_path, demo = sys.argv[1], sys.argv[2], sys.argv[3]
+plugin = json.load(open(plugin_path))
+review = json.load(open(review_path))
+if demo:
+    if not demo.startswith("https://"):
+        sys.exit("DEMO_RECORDING_URL must be an https:// URL")
+    review["demo_recording_url"] = demo
+plugin["extensions"]["com.openai"]["review"] = review
+open(plugin_path, "w").write(json.dumps(plugin, indent=2, ensure_ascii=False) + "\n")
+PY
 rm -f "$OUT"
 (cd "$STAGE" && zip -qr -X "$OUT" . -x '.DS_Store' -x '*/.DS_Store')
 echo "$OUT"

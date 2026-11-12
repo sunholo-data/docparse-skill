@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "ailang-parse",
-  "version": "0.18.0",
+  "version": "0.19.0",
   "description": "AILANG Parse — universal document parsing and generation. Parse 17 input formats into structured blocks and generate DOCX, PPTX, XLSX, ODT, ODP, ODS, HTML, Markdown and Quarto — via the hosted MCP server, or the local docparse CLI when documents must not leave the machine.",
   "author": {
     "name": "Holosun ApS",
@@ -24,7 +24,7 @@
       "interface": {
         "displayName": "AILANG Parse",
         "shortDescription": "Parse and create documents",
-        "longDescription": "AILANG Parse turns documents into structured blocks and back. Parse DOCX, PPTX, XLSX, ODT, ODP, ODS, PDF, HTML, Markdown, EPUB, EML, LaTeX, RTF, CSV and images — Office formats deterministically, with track changes, comments, headers, footers and merged cells preserved. Generate Word, PowerPoint, Excel, OpenDocument, HTML, Markdown and Quarto from Markdown or JSON blocks, convert between formats, and edit existing documents with a JSON delta; created files come back as a download link valid for one hour. Pass the file you attached in ChatGPT, upload one from a sandbox, or give a public link; long documents are read in parts, with a short summary first. AILANG Parse acts only on the files you pass to it. Estimate cost before parsing, and keep sensitive documents on your own machine with the local docparse CLI.",
+        "longDescription": "AILANG Parse reads documents with their structure intact, and writes new ones. Word, PowerPoint, Excel and OpenDocument files come back as Markdown, HTML or structured blocks, with headings, lists, tables (including merged cells), footnotes, comments, tracked changes, speaker notes and spreadsheet formulas kept. Office, OpenDocument, HTML, Markdown, CSV, EPUB, email, LaTeX and RTF are read without AI: the same file always gives the same result. PDFs are read from their text layer; images, and scanned PDFs when you ask, are read with an AI model. It also writes Word, PowerPoint, Excel, OpenDocument, HTML, Markdown and Quarto files from Markdown, or converts an existing document, and gives you a download link valid for one hour. Pass the file you attached in ChatGPT, give a public link, or try one of the built-in sample documents. Long documents are read in parts, with a short summary first. AILANG Parse acts only on the files you pass to it and never sees the rest of your conversation. For documents that must not leave your machine, the same engine runs locally as the docparse CLI.",
         "developerName": "Holosun ApS",
         "category": "Productivity",
         "capabilities": [
@@ -39,10 +39,12 @@
         "privacyPolicyURL": "https://www.sunholo.com/ailang-parse/privacy.html",
         "termsOfServiceURL": "https://www.sunholo.com/ailang-parse/terms.html",
         "defaultPrompt": [
-          "Extract the tables and tracked changes from this Word document.",
-          "Turn these notes into a PowerPoint deck."
+          "Show the comments and tracked changes in the AILANG Parse sample Word document.",
+          "Write a one-page project brief for a website relaunch as a Word document I can download.",
+          "Which document formats can AILANG Parse read without AI?"
         ],
-        "composerIcon": "./assets/icon.svg",
+        "brandColor": "#2563eb",
+        "composerIcon": "./assets/composer-icon.png",
         "logo": "./assets/logo.png"
       }
     }

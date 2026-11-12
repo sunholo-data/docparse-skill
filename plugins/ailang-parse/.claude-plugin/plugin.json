@@ -1,7 +1,7 @@
 {
   "name": "ailang-parse",
   "description": "AILANG Parse — Universal document parsing and generation. Parse documents into structured blocks and generate DOCX, PPTX, XLSX, ODT, ODP, ODS, HTML, Markdown and Quarto — via the hosted MCP server, or via the local `docparse` CLI when documents must not leave the machine. Signs in with OAuth; upload files from a sandbox (createUpload) or an in-chat card (uploadDocument), read long documents in parts, and estimate cost first.",
-  "version": "0.18.0",
+  "version": "0.19.0",
   "author": {
     "name": "Holosun ApS"
   }
