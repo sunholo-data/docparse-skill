@@ -23,6 +23,31 @@ const readJSON = (p) => JSON.parse(readFileSync(p, "utf8"));
 const ajv = new Ajv2020({ allErrors: true, strict: false });
 addFormats(ajv);
 
+// WCAG relative-luminance contrast ratio of two #RRGGBB colours.
+function contrast(a, b) {
+  const lum = (hex) => {
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+      .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+// Icons: "square and at least 48×48"; raster at most 4096px; an SVG needs
+// "square numeric dimensions or a square viewBox of at least 48 by 48".
+function checkIcon(label, path) {
+  const buf = readFileSync(path);
+  if (buf.length > 5 * 1024 * 1024) fail(`${label}: larger than 5 MiB`);
+  if (path.endsWith(".png")) {
+    const w = buf.readUInt32BE(16), h = buf.readUInt32BE(20);
+    if (w !== h || w < 48 || w > 4096) fail(`${label}: ${w}x${h}, need square, 48..4096 px`);
+  } else if (path.endsWith(".svg")) {
+    const m = /viewBox="\s*[\d.]+\s+[\d.]+\s+([\d.]+)\s+([\d.]+)\s*"/.exec(buf.toString("utf8"));
+    if (!m || m[1] !== m[2] || Number(m[1]) < 48) fail(`${label}: SVG viewBox must be square and at least 48x48`);
+  }
+}
+
 const compiled = {};
 async function validate(kind, file, doc = readJSON(file)) {
   if (!compiled[kind]) {
@@ -122,7 +147,47 @@ if (!ui) {
   if (ui.longDescription?.length > 4000) fail(`interface.longDescription > 4000 chars`);
   for (const f of ["logo", "composerIcon"]) {
     if (ui[f] && !existsSync(join(PLUGIN_DIR, ui[f]))) fail(`interface.${f}: ${ui[f]} does not exist`);
+    else if (ui[f]) checkIcon(`interface.${f}`, join(PLUGIN_DIR, ui[f]));
   }
+  // "Up to three starter prompts, at most 128 characters each. Make them
+  // unique and omit app @mentions." (developers.openai.com/plugins/deploy/submission)
+  const prompts = ui.defaultPrompt ?? [];
+  if (prompts.length > 3) fail(`interface.defaultPrompt: ${prompts.length} prompts, at most 3`);
+  if (new Set(prompts).size !== prompts.length) fail(`interface.defaultPrompt: prompts must be unique`);
+  for (const p of prompts) {
+    if (p.length > 128) fail(`interface.defaultPrompt: "${p.slice(0, 40)}…" > 128 chars`);
+    if (/@\w/.test(p)) fail(`interface.defaultPrompt: "${p.slice(0, 40)}…" has an @mention`);
+  }
+  // "#RRGGBB format, with at least 2:1 contrast against white"; the dark
+  // variant, derived when absent, needs 2:1 against #212121.
+  if (!/^#[0-9a-fA-F]{6}$/.test(ui.brandColor ?? "")) fail(`interface.brandColor: ${ui.brandColor} is not #RRGGBB`);
+  else if (contrast(ui.brandColor, "#ffffff") < 2) fail(`interface.brandColor: ${ui.brandColor} has < 2:1 contrast against white`);
+  if (ui.brandColorDark && contrast(ui.brandColorDark, "#212121") < 2) fail(`interface.brandColorDark: < 2:1 against #212121`);
+}
+
+// The ZIP-only review block (scripts/build-openai-submission.sh merges it):
+// "Initial MCP app review requires exactly five positive and three negative cases."
+const review = readJSON("openai-submission/review.json");
+const pos = review.test_cases?.positive ?? [];
+const neg = review.test_cases?.negative ?? [];
+if (pos.length !== 5) fail(`openai-submission/review.json: ${pos.length} positive test cases, need exactly 5`);
+if (neg.length !== 3) fail(`openai-submission/review.json: ${neg.length} negative test cases, need exactly 3`);
+pos.forEach((c, i) => {
+  for (const f of ["description", "prompt", "tools_triggered", "expected_behavior"]) {
+    if (typeof c[f] !== "string" || !c[f]) fail(`review positive[${i}].${f} is required (string)`);
+  }
+});
+neg.forEach((c, i) => {
+  for (const f of ["description", "prompt", "expected_behavior"]) {
+    if (typeof c[f] !== "string" || !c[f]) fail(`review negative[${i}].${f} is required (string)`);
+  }
+});
+for (const c of [...pos, ...neg]) {
+  for (const u of c.file_attachment_urls ?? []) if (!u.startsWith("https://")) fail(`review: attachment ${u} is not https`);
+}
+if (typeof review.commerce !== "boolean") fail(`openai-submission/review.json: commerce must be a boolean`);
+for (const f of ["test_credentials", "reviewer_instructions"]) {
+  if (f in review) fail(`openai-submission/review.json: ${f} is refused in the ZIP; enter it in the portal`);
 }
 
 // The Codex marketplace must point at the plugin directory we just validated.

@@ -175,7 +175,20 @@ upload with:
 
 ```bash
 bash scripts/build-openai-submission.sh   # -> dist/ailang-parse-<version>-openai.zip
+DEMO_RECORDING_URL=https://… bash scripts/build-openai-submission.sh   # include the demo video
 ```
+
+The ZIP's `plugin.json` also gets `extensions["com.openai"].review` from
+[`openai-submission/review.json`](openai-submission/review.json): `commerce: false` and
+the five positive and three negative test cases the portal requires for MCP review,
+each checked against the live connector before it was written down. They stay out of
+the installable `plugin.json`. Test credentials and reviewer instructions are not
+allowed in the ZIP; enter them in the portal's Review details form.
+`scripts/validate-agent-plugins.mjs` checks the case counts and fields, `brandColor`
+(`#RRGGBB`, at least 2:1 against white), `defaultPrompt` (at most 3, each at most 128
+characters, unique, no @mentions) and the icons (square, 48 to 4096 px; an SVG needs a
+square viewBox of at least 48). The 32-unit `icon.svg` fails that check, so
+`composerIcon` is `assets/composer-icon.png` (96×96, from `logo.png`).
 
 ## Other setups
 

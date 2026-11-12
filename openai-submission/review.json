@@ -1,0 +1,57 @@
+{
+  "commerce": false,
+  "test_cases": {
+    "positive": [
+      {
+        "description": "Discover what the plugin can read, without signing in.",
+        "prompt": "Which document formats can AILANG Parse read without AI?",
+        "tools_triggered": "mcpFormats",
+        "expected_behavior": "Calls mcpFormats (no sign-in needed). Lists Word, PowerPoint, Excel, OpenDocument, HTML, Markdown, CSV, EPUB, email, LaTeX and RTF as read without AI; says images need an AI model; may mention the sample documents. Shows no prices or plans."
+      },
+      {
+        "description": "Read review markup from a Word document (built-in sample, so no file is needed).",
+        "prompt": "Show the comments and tracked changes in the AILANG Parse sample Word document.",
+        "tools_triggered": "mcpParse",
+        "expected_behavior": "Calls mcpParse with filepath sample_docx_comments (and/or sample_docx_track_changes). Lists the comments with author (Jesse Rosenthal) and date, e.g. \"I left a comment.\", and the moved paragraph \"Here is the text to be moved.\" with its author."
+      },
+      {
+        "description": "Read a Word file the user attached.",
+        "prompt": "Summarise the structure of the Word document I attached: its headings and tables.",
+        "tools_triggered": "mcpParse",
+        "expected_behavior": "Calls mcpParse with the attached file in the file argument (outputFormat summary or markdown). Reports 4 headings (Introduction, Features, Sample Data Table, Conclusion) and 1 table (Format / Extension / Status).",
+        "file_attachment_urls": [
+          "https://www.sunholo.com/ailang-parse/assets/sample.docx"
+        ]
+      },
+      {
+        "description": "Create a new Word document from the conversation.",
+        "prompt": "Write a one-page project brief for a website relaunch as a Word document I can download.",
+        "tools_triggered": "mcpConvert",
+        "expected_behavior": "Writes the brief as Markdown and calls mcpConvert with content, filename notes.md (or similar) and outputFormat docx. Gives the user the download_url (valid for one hour); the link downloads a .docx with the brief's headings, list and table."
+      },
+      {
+        "description": "Check the signed-in account's usage.",
+        "prompt": "How much of my AILANG Parse allowance have I used this month?",
+        "tools_triggered": "mcpAccount",
+        "expected_behavior": "Calls mcpAccount (action status). Reports the plan, requests used and remaining this month, and the AI request allowance. No upgrade prompt or prices."
+      }
+    ],
+    "negative": [
+      {
+        "description": "A file path on the user's own computer, which the hosted service cannot read.",
+        "prompt": "Parse the file at /Users/me/Documents/contract.pdf",
+        "expected_behavior": "Does not pretend to read the file. Explains that AILANG Parse cannot reach the user's disk and asks the user to attach the file or give a public link. If it tries mcpParse with the path, the tool returns INPUT_NOT_FOUND and the assistant says so."
+      },
+      {
+        "description": "Audio is not processed by the hosted service.",
+        "prompt": "Transcribe this podcast MP3 for me with AILANG Parse.",
+        "expected_behavior": "Says the hosted AILANG Parse does not process audio or video (mcpFormats lists mp3 as self-host only; a call returns FORMAT_NOT_AVAILABLE) and points to the local CLI. Does not invent a transcript."
+      },
+      {
+        "description": "Deleting history is deliberately not an action the plugin offers.",
+        "prompt": "Delete all of my AILANG Parse request history.",
+        "expected_behavior": "Does not claim to have deleted anything; there is no delete tool. Explains that history is deleted from the AILANG Parse dashboard (Delete history), and offers to stop storing new history (mcpAccount history_off) only if the user wants that."
+      }
+    ]
+  }
+}
